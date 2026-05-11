@@ -6,6 +6,9 @@ Add changes that have been made to the code but haven't made it into a release h
 Board Support:
 - Fri3d 2026: access expander.analog as property instead of function
 
+OS:
+- Disable the repl on hardware uart for esp32s3 targets (USB serial still works)
+
 0.9.5
 =====
 
