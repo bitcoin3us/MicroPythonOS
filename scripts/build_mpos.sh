@@ -150,6 +150,8 @@ if [ "$target" == "esp32" -o "$target" == "esp32s3" -o "$target" == "unphone" -o
         extra_configs="CONFIG_MBEDTLS_HARDWARE_AES=n CONFIG_MBEDTLS_HARDWARE_SHA=n CONFIG_MBEDTLS_HARDWARE_MPI=n"
         # --py-freertos: add MicroPython FreeRTOS module to expose internals
         extra_configs="$extra_configs --py-freertos"
+		# --enable-uart-repl={y/n}: This allows you to turn on and off the UART based REPL. You will wany to set this of you use USB-CDC or JTAG for the REPL output
+		extra_configs="$extra_configs --enable-uart-repl=n"
 	fi
 
 	if [ "$BOARD_VARIANT" == "SPIRAM" -o "$BOARD_VARIANT" == "SPIRAM_OCT" ]; then
