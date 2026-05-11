@@ -1,5 +1,6 @@
 from mpos import Activity, DisplayMetrics
 import random
+import time
 
 
 def _shuffle(lst):
@@ -15,8 +16,8 @@ class Memory(Activity):
 
     def onCreate(self):
         self.screen = lv.obj()
-        self.timer = None
         self.win_label = None
+        self._last_ts = 0
         self.init_game()
         self.create_ui()
         self.setContentView(self.screen)
@@ -29,9 +30,28 @@ class Memory(Activity):
         self.hidden = symbols[:num_cells]
         self.revealed = [False] * num_cells
         self.shown = [" "] * num_cells
-        self.selected = []
-        self.locked = False
+        self.first_idx = -1
+        self.second_idx = -1
         self.moves = 0
+
+    def _build_btnm_map(self):
+        parts = []
+        for r in range(self.ROWS):
+            for c in range(self.COLS):
+                idx = r * self.COLS + c
+                if self.revealed[idx]:
+                    parts.append(self.hidden[idx])
+                elif self.shown[idx] != " ":
+                    parts.append(self.shown[idx])
+                else:
+                    parts.append(" ")
+            parts.append("\n")
+        parts.pop()
+        parts.append("")
+        return parts
+
+    def update_btnm_map(self):
+        self.btnm.set_map(self._build_btnm_map())
 
     def create_ui(self):
         title = lv.label(self.screen)
@@ -57,24 +77,9 @@ class Memory(Activity):
     def update_moves_label(self):
         self.moves_label.set_text(f"Moves: {self.moves}")
 
-    def update_btnm_map(self):
-        parts = []
-        for r in range(self.ROWS):
-            for c in range(self.COLS):
-                idx = r * self.COLS + c
-                if self.revealed[idx]:
-                    parts.append(self.hidden[idx])
-                elif self.shown[idx] != " ":
-                    parts.append(self.shown[idx])
-                else:
-                    parts.append(" ")
-            parts.append("\n")
-        parts.pop()
-        parts.append("")
-        self.btnm.set_map(parts)
-
     def on_button(self, event):
-        if self.locked:
+        now = time.ticks_ms()
+        if time.ticks_diff(now, self._last_ts) < 50:
             return
         btnm = event.get_target_obj()
         idx = btnm.get_selected_button()
@@ -83,35 +88,38 @@ class Memory(Activity):
         if self.revealed[idx] or self.shown[idx] != " ":
             return
 
-        self.shown[idx] = self.hidden[idx]
-        self.selected.append(idx)
-        self.update_btnm_map()
+        # If a non-match pair is showing, clear it first
+        if self.first_idx != -1 and self.second_idx != -1:
+            self.shown[self.first_idx] = " "
+            self.shown[self.second_idx] = " "
+            self.first_idx = -1
+            self.second_idx = -1
+            self.update_btnm_map()
 
-        if len(self.selected) == 2:
+        if self.first_idx == -1:
+            self._last_ts = now
+            self.first_idx = idx
+            self.shown[idx] = self.hidden[idx]
+            self.update_btnm_map()
+        elif self.second_idx == -1 and idx != self.first_idx:
+            self._last_ts = now
+            self.second_idx = idx
+            self.shown[idx] = self.hidden[idx]
+            self.update_btnm_map()
+
             self.moves += 1
             self.update_moves_label()
-            self.locked = True
-            first, second = self.selected
-            if self.hidden[first] == self.hidden[second]:
-                self.revealed[first] = True
-                self.revealed[second] = True
-                self.shown[first] = " "
-                self.shown[second] = " "
-                self.selected = []
-                self.locked = False
+
+            if self.hidden[self.first_idx] == self.hidden[self.second_idx]:
+                self.revealed[self.first_idx] = True
+                self.revealed[self.second_idx] = True
+                self.shown[self.first_idx] = " "
+                self.shown[self.second_idx] = " "
+                self.first_idx = -1
+                self.second_idx = -1
                 self.update_btnm_map()
                 if all(self.revealed):
                     self.on_win()
-            else:
-                self.timer = lv.timer_create(self.on_hide_timeout, 3000, None)
-
-    def on_hide_timeout(self, timer):
-        self.timer = None
-        for idx in self.selected:
-            self.shown[idx] = " "
-        self.selected = []
-        self.locked = False
-        self.update_btnm_map()
 
     def on_win(self):
         self.win_label = lv.label(self.screen)
@@ -120,17 +128,13 @@ class Memory(Activity):
         self.win_label.set_style_text_color(lv.color_hex(0x00ff00), lv.PART.MAIN)
 
     def on_reset(self, event):
-        if self.timer:
-            self.timer.delete()
-            self.timer = None
         if self.win_label:
             self.win_label.delete()
             self.win_label = None
+        self._last_ts = time.ticks_ms()
         self.init_game()
         self.update_btnm_map()
         self.update_moves_label()
 
     def onDestroy(self, screen):
-        if self.timer:
-            self.timer.delete()
-            self.timer = None
+        pass
