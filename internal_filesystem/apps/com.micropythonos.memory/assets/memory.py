@@ -40,7 +40,7 @@ class Memory(Activity):
             for c in range(self.COLS):
                 idx = r * self.COLS + c
                 if self.revealed[idx]:
-                    parts.append(self.hidden[idx])
+                    parts.append(self.hidden[idx] + "!")
                 elif self.shown[idx] != " ":
                     parts.append(self.shown[idx])
                 else:
@@ -54,18 +54,17 @@ class Memory(Activity):
         self.btnm.set_map(self._build_btnm_map())
 
     def create_ui(self):
-        title = lv.label(self.screen)
-        title.set_text("Memory")
-        title.align(lv.ALIGN.TOP_MID, 0, 10)
-
         self.moves_label = lv.label(self.screen)
-        self.update_moves_label()
-        self.moves_label.align(lv.ALIGN.TOP_MID, 0, 30)
+        self.moves_label.align(lv.ALIGN.TOP_RIGHT, -10, 10)
+
+        self.points_label = lv.label(self.screen)
+        self.points_label.align(lv.ALIGN.TOP_LEFT, 10, 10)
+        self.refresh_labels()
 
         self.btnm = lv.buttonmatrix(self.screen)
         self.update_btnm_map()
-        self.btnm.set_size(lv.pct(100), DisplayMetrics.pct_of_height(65))
-        self.btnm.align(lv.ALIGN.CENTER, 0, 10)
+        self.btnm.set_size(lv.pct(100), DisplayMetrics.pct_of_height(75))
+        self.btnm.align(lv.ALIGN.CENTER, 0, 0)
         self.btnm.add_event_cb(self.on_button, lv.EVENT.VALUE_CHANGED, None)
 
         reset_btn = lv.button(self.screen)
@@ -74,8 +73,10 @@ class Memory(Activity):
         reset_btn.align(lv.ALIGN.BOTTOM_MID, 0, -10)
         reset_btn.add_event_cb(self.on_reset, lv.EVENT.CLICKED, None)
 
-    def update_moves_label(self):
+    def refresh_labels(self):
         self.moves_label.set_text(f"Moves: {self.moves}")
+        points = sum(1 for r in self.revealed if r) // 2
+        self.points_label.set_text(f"Points: {points}")
 
     def on_button(self, event):
         now = time.ticks_ms()
@@ -88,28 +89,21 @@ class Memory(Activity):
         if self.revealed[idx] or self.shown[idx] != " ":
             return
 
-        # If a non-match pair is showing, clear it first
         if self.first_idx != -1 and self.second_idx != -1:
             self.shown[self.first_idx] = " "
             self.shown[self.second_idx] = " "
             self.first_idx = -1
             self.second_idx = -1
-            self.update_btnm_map()
 
         if self.first_idx == -1:
             self._last_ts = now
             self.first_idx = idx
             self.shown[idx] = self.hidden[idx]
-            self.update_btnm_map()
         elif self.second_idx == -1 and idx != self.first_idx:
             self._last_ts = now
             self.second_idx = idx
             self.shown[idx] = self.hidden[idx]
-            self.update_btnm_map()
-
             self.moves += 1
-            self.update_moves_label()
-
             if self.hidden[self.first_idx] == self.hidden[self.second_idx]:
                 self.revealed[self.first_idx] = True
                 self.revealed[self.second_idx] = True
@@ -117,9 +111,11 @@ class Memory(Activity):
                 self.shown[self.second_idx] = " "
                 self.first_idx = -1
                 self.second_idx = -1
-                self.update_btnm_map()
                 if all(self.revealed):
                     self.on_win()
+            self.refresh_labels()
+
+        self.update_btnm_map()
 
     def on_win(self):
         self.win_label = lv.label(self.screen)
@@ -134,7 +130,7 @@ class Memory(Activity):
         self._last_ts = time.ticks_ms()
         self.init_game()
         self.update_btnm_map()
-        self.update_moves_label()
+        self.refresh_labels()
 
     def onDestroy(self, screen):
         pass
