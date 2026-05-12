@@ -42,6 +42,7 @@ class Memory(Activity):
     def onCreate(self):
         self.screen = lv.obj()
         self._last_ts = 0
+        self._win_timer = None
         self.level = 1
         self.btnm = None
         self.new_game()
@@ -154,6 +155,11 @@ class Memory(Activity):
         self.update_btnm_map()
 
     def on_win(self):
+        self._win_timer = lv.timer_create(self._advance_level, 1000, None)
+        self._win_timer.set_repeat_count(1)
+
+    def _advance_level(self, timer):
+        self._win_timer = None
         self.level += 1
         self._last_ts = time.ticks_ms()
         self.new_game()
@@ -161,6 +167,9 @@ class Memory(Activity):
         self.refresh_labels()
 
     def on_reset(self, event):
+        if self._win_timer:
+            lv.timer_del(self._win_timer)
+            self._win_timer = None
         self._last_ts = time.ticks_ms()
         self.level = 1
         self.new_game()
@@ -168,4 +177,6 @@ class Memory(Activity):
         self.refresh_labels()
 
     def onDestroy(self, screen):
-        pass
+        if self._win_timer:
+            lv.timer_del(self._win_timer)
+            self._win_timer = None
