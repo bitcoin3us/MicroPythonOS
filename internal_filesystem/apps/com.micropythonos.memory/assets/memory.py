@@ -9,9 +9,17 @@ def _shuffle(lst):
         lst[i], lst[j] = lst[j], lst[i]
 
 
+def _grid_dims(n):
+    best = (1, n)
+    for r in range(1, int(n**0.5) + 1):
+        if n % r == 0:
+            c = n // r
+            if abs(r - c) < abs(best[0] - best[1]):
+                best = (r, c)
+    return best
+
+
 class Memory(Activity):
-    ROWS = 4
-    COLS = 4
     SYMBOLS = [
         chr(61441), chr(61448), chr(61451), chr(61452), chr(61452), chr(61453),
         chr(61457), chr(61459), chr(61461), chr(61465), chr(61468), chr(61473),
@@ -33,14 +41,16 @@ class Memory(Activity):
 
     def onCreate(self):
         self.screen = lv.obj()
-        self.win_label = None
         self._last_ts = 0
-        self.init_game()
+        self.level = 1
+        self.btnm = None
+        self.new_game()
         self.create_ui()
         self.setContentView(self.screen)
 
-    def init_game(self):
-        num_cells = self.ROWS * self.COLS
+    def new_game(self):
+        num_cells = self.level * 2
+        self.ROWS, self.COLS = _grid_dims(num_cells)
         num_pairs = num_cells // 2
         symbols = self.SYMBOLS[:num_pairs] * 2
         _shuffle(symbols)
@@ -71,6 +81,9 @@ class Memory(Activity):
         self.btnm.set_map(self._build_btnm_map())
 
     def create_ui(self):
+        self.level_label = lv.label(self.screen)
+        self.level_label.align(lv.ALIGN.TOP_MID, 0, 10)
+
         self.moves_label = lv.label(self.screen)
         self.moves_label.align(lv.ALIGN.TOP_RIGHT, -10, 10)
 
@@ -78,11 +91,7 @@ class Memory(Activity):
         self.points_label.align(lv.ALIGN.TOP_LEFT, 10, 10)
         self.refresh_labels()
 
-        self.btnm = lv.buttonmatrix(self.screen)
-        self.update_btnm_map()
-        self.btnm.set_size(lv.pct(100), DisplayMetrics.pct_of_height(75))
-        self.btnm.align(lv.ALIGN.CENTER, 0, 0)
-        self.btnm.add_event_cb(self.on_button, lv.EVENT.VALUE_CHANGED, None)
+        self.build_board()
 
         reset_btn = lv.button(self.screen)
         reset_label = lv.label(reset_btn)
@@ -90,7 +99,17 @@ class Memory(Activity):
         reset_btn.align(lv.ALIGN.BOTTOM_MID, 0, -10)
         reset_btn.add_event_cb(self.on_reset, lv.EVENT.CLICKED, None)
 
+    def build_board(self):
+        if self.btnm:
+            self.btnm.delete()
+        self.btnm = lv.buttonmatrix(self.screen)
+        self.update_btnm_map()
+        self.btnm.set_size(lv.pct(100), DisplayMetrics.pct_of_height(75))
+        self.btnm.align(lv.ALIGN.CENTER, 0, 0)
+        self.btnm.add_event_cb(self.on_button, lv.EVENT.VALUE_CHANGED, None)
+
     def refresh_labels(self):
+        self.level_label.set_text(f"Level: {self.level}")
         self.moves_label.set_text(f"Moves: {self.moves}")
         points = sum(1 for r in self.revealed if r) // 2
         self.points_label.set_text(f"Points: {points}")
@@ -135,18 +154,17 @@ class Memory(Activity):
         self.update_btnm_map()
 
     def on_win(self):
-        self.win_label = lv.label(self.screen)
-        self.win_label.set_text(f"You Win! ({self.moves} moves)")
-        self.win_label.align(lv.ALIGN.CENTER, 0, -30)
-        self.win_label.set_style_text_color(lv.color_hex(0x00ff00), lv.PART.MAIN)
+        self.level += 1
+        self._last_ts = time.ticks_ms()
+        self.new_game()
+        self.build_board()
+        self.refresh_labels()
 
     def on_reset(self, event):
-        if self.win_label:
-            self.win_label.delete()
-            self.win_label = None
         self._last_ts = time.ticks_ms()
-        self.init_game()
-        self.update_btnm_map()
+        self.level = 1
+        self.new_game()
+        self.build_board()
         self.refresh_labels()
 
     def onDestroy(self, screen):
