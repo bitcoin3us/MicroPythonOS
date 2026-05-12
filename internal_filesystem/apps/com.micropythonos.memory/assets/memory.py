@@ -105,6 +105,11 @@ class Memory(Activity):
         if self.btnm:
             self.btnm.delete()
         self.btnm = lv.buttonmatrix(self.screen)
+        style = lv.style_t()
+        style.init()
+        style.set_bg_color(lv.color_hex(0xFBDC05))
+        style.set_text_color(lv.color_hex(0x000000))
+        self.btnm.add_style(style, lv.PART.ITEMS)
         self.update_btnm_map()
         self.btnm.set_size(lv.pct(100), DisplayMetrics.pct_of_height(75))
         self.btnm.align(lv.ALIGN.CENTER, 0, 0)
