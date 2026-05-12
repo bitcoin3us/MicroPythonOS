@@ -1,4 +1,4 @@
-from mpos import Activity, DisplayMetrics, SharedPreferences
+from mpos import Activity, AppearanceManager, DisplayMetrics, SharedPreferences
 import random
 import time
 
@@ -163,6 +163,8 @@ class Memory(Activity):
         self.highscore_label.set_text(f"Best: {best}")
         if self.score > self.highscore and self.score > 0:
             self.highscore_label.set_style_text_color(lv.color_hex(0xE74C3C), lv.PART.MAIN)
+        elif AppearanceManager.is_light_mode():
+            self.highscore_label.set_style_text_color(lv.color_hex(0x000000), lv.PART.MAIN)
         else:
             self.highscore_label.set_style_text_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
 
