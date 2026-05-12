@@ -12,7 +12,24 @@ def _shuffle(lst):
 class Memory(Activity):
     ROWS = 4
     COLS = 4
-    SYMBOLS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    SYMBOLS = [
+        chr(61441), chr(61448), chr(61451), chr(61452), chr(61452), chr(61453),
+        chr(61457), chr(61459), chr(61461), chr(61465), chr(61468), chr(61473),
+        chr(61478), chr(61479), chr(61480), chr(61502), chr(61507), chr(61512),
+        chr(61515), chr(61516), chr(61517), chr(61521), chr(61522), chr(61523),
+        chr(61524), chr(61543), chr(61544), chr(61550), chr(61552), chr(61553),
+        chr(61556), chr(61559), chr(61560), chr(61561), chr(61563), chr(61587),
+        chr(61589), chr(61636), chr(61637), chr(61639), chr(61641), chr(61664),
+        chr(61671), chr(61674), chr(61683), chr(61724), chr(61732), chr(61787),
+        chr(61931), chr(62016), chr(62017), chr(62018), chr(62019), chr(62020),
+        chr(62087), chr(62099), chr(62212), chr(62189), chr(62810), chr(63426),
+        chr(63650),
+        chr(0xf002), chr(0xf004), chr(0xf005), chr(0xf00e), chr(0xf010),
+        chr(0xf029), chr(0xf030),
+        chr(0xf15a), chr(0xf164), chr(0xf165), chr(0xf1e0),
+        chr(0xf2ea), chr(0xf379), chr(0xf58f),
+        chr(0x2022), chr(0x20bf), chr(0x4e2f), chr(0x4e30),
+    ]
 
     def onCreate(self):
         self.screen = lv.obj()
