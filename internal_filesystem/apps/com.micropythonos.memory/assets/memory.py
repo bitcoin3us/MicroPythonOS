@@ -104,7 +104,7 @@ class Memory(Activity):
         self.labels = []
         for idx in range(len(self.hidden)):
             btn = lv.button(self.container)
-            btn.set_size(lv.pct(90 // self.COLS), lv.pct(80 // self.ROWS))
+            btn.set_size(lv.pct(95 // self.COLS), lv.pct(95 // self.ROWS))
             label = lv.label(btn)
             if self.revealed[idx]:
                 label.set_text(self.hidden[idx] + "!")
