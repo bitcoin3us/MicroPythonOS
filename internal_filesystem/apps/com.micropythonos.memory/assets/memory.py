@@ -59,6 +59,7 @@ class Memory(Activity):
         self.new_game()
         self.create_ui()
         self.setContentView(self.screen)
+        self._check_autoload()
 
     def new_game(self):
         num_cells = self.level * 2
@@ -173,6 +174,73 @@ class Memory(Activity):
             editor.put_int("highscore", self.highscore)
             editor.commit()
 
+    def _autosave(self):
+        if self.score > self.highscore:
+            editor = SharedPreferences(self.appFullName).edit()
+            editor.put_int("autosave_level", self.level)
+            editor.put_int("autosave_score", self.score)
+            editor.commit()
+
+    def _delete_autosave(self):
+        editor = SharedPreferences(self.appFullName).edit()
+        editor.put_int("autosave_level", 0)
+        editor.put_int("autosave_score", 0)
+        editor.commit()
+
+    def _check_autoload(self):
+        prefs = SharedPreferences(self.appFullName)
+        saved_level = prefs.get_int("autosave_level", 0)
+        saved_score = prefs.get_int("autosave_score", 0)
+        if saved_level == 0 and saved_score == 0:
+            return
+
+        self.popup_modal = lv.obj(lv.layer_top())
+        self.popup_modal.set_size(DisplayMetrics.width(), DisplayMetrics.height())
+        self.popup_modal.set_style_bg_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        self.popup_modal.set_style_bg_opa(150, lv.PART.MAIN)
+        self.popup_modal.set_style_border_width(0, lv.PART.MAIN)
+        self.popup_modal.set_pos(0, 0)
+
+        popup = lv.obj(self.popup_modal)
+        popup.set_size(220, 140)
+        popup.set_style_bg_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+        popup.set_style_border_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        popup.set_style_border_width(3, lv.PART.MAIN)
+        popup.set_style_radius(10, lv.PART.MAIN)
+        popup.center()
+
+        question = lv.label(popup)
+        question.set_text(f"Load best game:\nlevel {saved_level}, score {saved_score}?")
+        question.set_style_text_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        question.align(lv.ALIGN.TOP_MID, 0, 10)
+
+        yes_btn = lv.button(popup)
+        yes_btn.set_size(75, 35)
+        yes_btn.align(lv.ALIGN.BOTTOM_LEFT, 0, 0)
+        yes_btn.add_event_cb(lambda e: self._do_load(e, saved_level, saved_score), lv.EVENT.CLICKED, None)
+        yes_label = lv.label(yes_btn)
+        yes_label.set_text("Yes")
+        yes_label.center()
+
+        no_btn = lv.button(popup)
+        no_btn.set_size(75, 35)
+        no_btn.align(lv.ALIGN.BOTTOM_RIGHT, 0, 0)
+        no_btn.add_event_cb(self._on_autoload_no, lv.EVENT.CLICKED, None)
+        no_label = lv.label(no_btn)
+        no_label.set_text("No")
+        no_label.center()
+
+    def _do_load(self, event, saved_level, saved_score):
+        self._close_popup()
+        self.level = saved_level
+        self.score = saved_score
+        self.new_game()
+        self.build_board()
+        self.refresh_labels()
+
+    def _on_autoload_no(self, event):
+        self._close_popup()
+
     def on_highscore_tap(self, event):
         self.popup_modal = lv.obj(lv.layer_top())
         self.popup_modal.set_size(DisplayMetrics.width(), DisplayMetrics.height())
@@ -220,6 +288,7 @@ class Memory(Activity):
         editor = SharedPreferences(self.appFullName).edit()
         editor.put_int("highscore", 0)
         editor.commit()
+        self._delete_autosave()
         self._close_popup()
         self.refresh_labels()
 
@@ -273,6 +342,7 @@ class Memory(Activity):
 
     def _advance_level(self, timer):
         self._win_timer = None
+        self._autosave()
         self.level += 1
         self._last_ts = time.ticks_ms()
         self.new_game()
@@ -319,6 +389,7 @@ class Memory(Activity):
 
     def _do_reset(self, event):
         self._close_popup()
+        self._delete_autosave()
         if self._win_timer:
             lv.timer_del(self._win_timer)
             self._win_timer = None
