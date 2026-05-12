@@ -44,6 +44,7 @@ class Memory(Activity):
         self._last_ts = 0
         self._win_timer = None
         self.level = 1
+        self.total_points = 0
         self.btnm = None
         self.new_game()
         self.create_ui()
@@ -112,8 +113,7 @@ class Memory(Activity):
     def refresh_labels(self):
         self.level_label.set_text(f"Level: {self.level}")
         self.moves_label.set_text(f"Moves: {self.moves}")
-        points = sum(1 for r in self.revealed if r) // 2
-        self.points_label.set_text(f"Points: {points}")
+        self.points_label.set_text(f"Points: {self.total_points}")
 
     def on_button(self, event):
         now = time.ticks_ms()
@@ -142,6 +142,7 @@ class Memory(Activity):
             self.shown[idx] = self.hidden[idx]
             self.moves += 1
             if self.hidden[self.first_idx] == self.hidden[self.second_idx]:
+                self.total_points += 1
                 self.revealed[self.first_idx] = True
                 self.revealed[self.second_idx] = True
                 self.shown[self.first_idx] = " "
@@ -172,6 +173,7 @@ class Memory(Activity):
             self._win_timer = None
         self._last_ts = time.ticks_ms()
         self.level = 1
+        self.total_points = 0
         self.new_game()
         self.build_board()
         self.refresh_labels()
