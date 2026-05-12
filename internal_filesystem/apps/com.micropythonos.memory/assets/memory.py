@@ -50,6 +50,7 @@ class Memory(Activity):
         self._win_timer = None
         self.level = 1
         self.total_points = 0
+        self.score = 0
         self.container = None
         self.buttons = []
         self.labels = []
@@ -79,6 +80,9 @@ class Memory(Activity):
 
         self.points_label = lv.label(self.screen)
         self.points_label.align(lv.ALIGN.TOP_LEFT, 10, 10)
+
+        self.score_label = lv.label(self.screen)
+        self.score_label.align(lv.ALIGN.BOTTOM_LEFT, 10, -10)
         self.refresh_labels()
 
         self.build_board()
@@ -86,7 +90,7 @@ class Memory(Activity):
         reset_btn = lv.button(self.screen)
         reset_label = lv.label(reset_btn)
         reset_label.set_text("New Game")
-        reset_btn.align(lv.ALIGN.BOTTOM_MID, 0, 0)
+        reset_btn.align(lv.ALIGN.BOTTOM_RIGHT, 0, 0)
         reset_btn.add_event_cb(self.on_reset, lv.EVENT.CLICKED, None)
 
     def build_board(self):
@@ -144,6 +148,7 @@ class Memory(Activity):
         self.level_label.set_text(f"Level: {self.level}")
         self.moves_label.set_text(f"Moves: {self.moves}")
         self.points_label.set_text(f"Points: {self.total_points}")
+        self.score_label.set_text(f"Score: {self.score}")
 
     def on_button(self, event, idx):
         now = time.ticks_ms()
@@ -171,6 +176,9 @@ class Memory(Activity):
             self.moves += 1
             if self.hidden[self.first_idx] == self.hidden[self.second_idx]:
                 self.total_points += 1
+                pairs_before = sum(self.revealed) // 2
+                wasted = self.moves - (pairs_before + 1)
+                self.score += max(10, 100 - wasted * 20)
                 self.revealed[self.first_idx] = True
                 self.revealed[self.second_idx] = True
                 self.shown[self.first_idx] = " "
@@ -202,6 +210,7 @@ class Memory(Activity):
         self._last_ts = time.ticks_ms()
         self.level = 1
         self.total_points = 0
+        self.score = 0
         self.new_game()
         self.build_board()
         self.refresh_labels()
