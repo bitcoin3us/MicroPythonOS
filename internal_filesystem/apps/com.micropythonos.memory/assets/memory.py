@@ -98,7 +98,7 @@ class Memory(Activity):
         reset_btn = lv.button(self.screen)
         reset_label = lv.label(reset_btn)
         reset_label.set_text("New Game")
-        reset_btn.align(lv.ALIGN.BOTTOM_MID, 0, -10)
+        reset_btn.align(lv.ALIGN.BOTTOM_MID, 0, 0)
         reset_btn.add_event_cb(self.on_reset, lv.EVENT.CLICKED, None)
 
     def build_board(self):
