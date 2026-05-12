@@ -20,6 +20,11 @@ def _grid_dims(n):
 
 
 class Memory(Activity):
+    LIGHT_BLUE = lv.color_hex(0x5DADE2)
+    ORANGE = lv.color_hex(0xF39C12)
+    GREEN = lv.color_hex(0x27AE60)
+    RED = lv.color_hex(0xE74C3C)
+
     SYMBOLS = [
         chr(61441), chr(61448), chr(61451), chr(61452), chr(61452), chr(61453),
         chr(61457), chr(61459), chr(61461), chr(61465), chr(61468), chr(61473),
@@ -45,7 +50,9 @@ class Memory(Activity):
         self._win_timer = None
         self.level = 1
         self.total_points = 0
-        self.btnm = None
+        self.container = None
+        self.buttons = []
+        self.labels = []
         self.new_game()
         self.create_ui()
         self.setContentView(self.screen)
@@ -62,25 +69,6 @@ class Memory(Activity):
         self.first_idx = -1
         self.second_idx = -1
         self.moves = 0
-
-    def _build_btnm_map(self):
-        parts = []
-        for r in range(self.ROWS):
-            for c in range(self.COLS):
-                idx = r * self.COLS + c
-                if self.revealed[idx]:
-                    parts.append(self.hidden[idx] + "!")
-                elif self.shown[idx] != " ":
-                    parts.append(self.shown[idx])
-                else:
-                    parts.append(" ")
-            parts.append("\n")
-        parts.pop()
-        parts.append("")
-        return parts
-
-    def update_btnm_map(self):
-        self.btnm.set_map(self._build_btnm_map())
 
     def create_ui(self):
         self.level_label = lv.label(self.screen)
@@ -102,30 +90,65 @@ class Memory(Activity):
         reset_btn.add_event_cb(self.on_reset, lv.EVENT.CLICKED, None)
 
     def build_board(self):
-        if self.btnm:
-            self.btnm.delete()
-        self.btnm = lv.buttonmatrix(self.screen)
-        style = lv.style_t()
-        style.init()
-        style.set_bg_color(lv.color_hex(0xFBDC05))
-        style.set_text_color(lv.color_hex(0x000000))
-        self.btnm.add_style(style, lv.PART.ITEMS)
-        self.update_btnm_map()
-        self.btnm.set_size(lv.pct(100), DisplayMetrics.pct_of_height(75))
-        self.btnm.align(lv.ALIGN.CENTER, 0, 0)
-        self.btnm.add_event_cb(self.on_button, lv.EVENT.VALUE_CHANGED, None)
+        if self.container:
+            self.container.delete()
+        self.container = lv.obj(self.screen)
+        self.container.set_size(lv.pct(100), DisplayMetrics.pct_of_height(75))
+        self.container.align(lv.ALIGN.CENTER, 0, 0)
+        self.container.set_flex_flow(lv.FLEX_FLOW.ROW_WRAP)
+        self.container.set_style_pad_row(2, 0)
+        self.container.set_style_pad_column(2, 0)
+        self.container.set_style_radius(0, 0)
+
+        self.buttons = []
+        self.labels = []
+        for idx in range(len(self.hidden)):
+            btn = lv.button(self.container)
+            btn.set_size(lv.pct(90 // self.COLS), lv.pct(80 // self.ROWS))
+            label = lv.label(btn)
+            if self.revealed[idx]:
+                label.set_text(self.hidden[idx] + "!")
+            elif self.shown[idx] != " ":
+                label.set_text(self.shown[idx])
+            else:
+                label.set_text("")
+            label.center()
+            btn.add_event_cb(lambda e, i=idx: self.on_button(e, i), lv.EVENT.CLICKED, None)
+            self._color_button(btn, idx)
+            self.buttons.append(btn)
+            self.labels.append(label)
+
+    def _color_button(self, btn, idx):
+        if self.revealed[idx]:
+            color = self.GREEN
+        elif self.shown[idx] != " " and self.first_idx != -1 and self.second_idx != -1:
+            color = self.RED
+        elif self.shown[idx] != " ":
+            color = self.ORANGE
+        else:
+            color = self.LIGHT_BLUE
+        btn.set_style_bg_color(color, lv.PART.MAIN)
+
+    def _update_all_buttons(self):
+        for idx, btn in enumerate(self.buttons):
+            label = self.labels[idx]
+            if self.revealed[idx]:
+                label.set_text(self.hidden[idx] + "!")
+            elif self.shown[idx] != " ":
+                label.set_text(self.shown[idx])
+            else:
+                label.set_text("")
+            self._color_button(btn, idx)
 
     def refresh_labels(self):
         self.level_label.set_text(f"Level: {self.level}")
         self.moves_label.set_text(f"Moves: {self.moves}")
         self.points_label.set_text(f"Points: {self.total_points}")
 
-    def on_button(self, event):
+    def on_button(self, event, idx):
         now = time.ticks_ms()
         if time.ticks_diff(now, self._last_ts) < 50:
             return
-        btnm = event.get_target_obj()
-        idx = btnm.get_selected_button()
         if idx < 0 or idx >= len(self.hidden):
             return
         if self.revealed[idx] or self.shown[idx] != " ":
@@ -158,7 +181,7 @@ class Memory(Activity):
                     self.on_win()
             self.refresh_labels()
 
-        self.update_btnm_map()
+        self._update_all_buttons()
 
     def on_win(self):
         self._win_timer = lv.timer_create(self._advance_level, 1000, None)
@@ -187,3 +210,6 @@ class Memory(Activity):
         if self._win_timer:
             lv.timer_del(self._win_timer)
             self._win_timer = None
+        if self.container:
+            self.container.delete()
+            self.container = None
