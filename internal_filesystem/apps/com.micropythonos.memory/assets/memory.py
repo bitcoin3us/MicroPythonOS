@@ -64,7 +64,9 @@ class Memory(Activity):
         num_cells = self.level * 2
         self.ROWS, self.COLS = _grid_dims(num_cells)
         num_pairs = num_cells // 2
-        symbols = self.SYMBOLS[:num_pairs] * 2
+        pool = self.SYMBOLS[:]
+        _shuffle(pool)
+        symbols = pool[:num_pairs] * 2
         _shuffle(symbols)
         self.hidden = symbols[:num_cells]
         self.revealed = [False] * num_cells
