@@ -29,6 +29,7 @@ LVGL tips:
 - use `.remove_flag()` instead of `.clear_flag()`
 - use `obj.remove_state(...)` not `obj.clear_state(...)`
 - event handlers need 3 arguments: `button.add_event_cb(button_cb, lv.EVENT.CLICKED, None)`
+- if you pass a method as an event callback, it must accept the event argument: `def callback(self, event)`. Using the same method as both a direct call and an event callback requires a default: `def method(self, event=None)`.
 - don't hard-code display resolution; use `lv.pct(100)` or other techniques to scale the interface
 - `DRAW_PART_BEGIN` does not exist anymore
 - don't use `get_child_by_type()`; use a global variable with the child you want instead

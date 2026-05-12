@@ -208,7 +208,7 @@ class Memory(Activity):
         no_label.set_text("No")
         no_label.center()
 
-    def _close_popup(self):
+    def _close_popup(self, event=None):
         if self.popup_modal:
             self.popup_modal.delete()
             self.popup_modal = None
@@ -278,6 +278,45 @@ class Memory(Activity):
         self.refresh_labels()
 
     def on_reset(self, event):
+        self._close_popup()
+        self.popup_modal = lv.obj(lv.layer_top())
+        self.popup_modal.set_size(DisplayMetrics.width(), DisplayMetrics.height())
+        self.popup_modal.set_style_bg_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        self.popup_modal.set_style_bg_opa(150, lv.PART.MAIN)
+        self.popup_modal.set_style_border_width(0, lv.PART.MAIN)
+        self.popup_modal.set_pos(0, 0)
+
+        popup = lv.obj(self.popup_modal)
+        popup.set_size(200, 120)
+        popup.set_style_bg_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+        popup.set_style_border_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        popup.set_style_border_width(3, lv.PART.MAIN)
+        popup.set_style_radius(10, lv.PART.MAIN)
+        popup.center()
+
+        question = lv.label(popup)
+        question.set_text("New game?")
+        question.set_style_text_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        question.align(lv.ALIGN.TOP_MID, 0, 15)
+
+        yes_btn = lv.button(popup)
+        yes_btn.set_size(75, 35)
+        yes_btn.align(lv.ALIGN.BOTTOM_LEFT, 0, 0)
+        yes_btn.add_event_cb(self._do_reset, lv.EVENT.CLICKED, None)
+        yes_label = lv.label(yes_btn)
+        yes_label.set_text("Yes")
+        yes_label.center()
+
+        no_btn = lv.button(popup)
+        no_btn.set_size(75, 35)
+        no_btn.align(lv.ALIGN.BOTTOM_RIGHT, 0, 0)
+        no_btn.add_event_cb(self._close_popup, lv.EVENT.CLICKED, None)
+        no_label = lv.label(no_btn)
+        no_label.set_text("No")
+        no_label.center()
+
+    def _do_reset(self, event):
+        self._close_popup()
         if self._win_timer:
             lv.timer_del(self._win_timer)
             self._win_timer = None
