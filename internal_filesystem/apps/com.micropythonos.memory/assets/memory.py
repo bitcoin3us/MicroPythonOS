@@ -1,4 +1,4 @@
-from mpos import Activity, DisplayMetrics
+from mpos import Activity, DisplayMetrics, SharedPreferences
 import random
 import time
 
@@ -51,9 +51,11 @@ class Memory(Activity):
         self.level = 1
         self.total_points = 0
         self.score = 0
+        self.highscore = SharedPreferences(self.appFullName).get_int("highscore", 0)
         self.container = None
         self.buttons = []
         self.labels = []
+        self.popup_modal = None
         self.new_game()
         self.create_ui()
         self.setContentView(self.screen)
@@ -83,6 +85,11 @@ class Memory(Activity):
 
         self.score_label = lv.label(self.screen)
         self.score_label.align(lv.ALIGN.BOTTOM_LEFT, 10, -10)
+
+        self.highscore_label = lv.label(self.screen)
+        self.highscore_label.align(lv.ALIGN.BOTTOM_MID, 0, -10)
+        self.highscore_label.add_flag(lv.obj.FLAG.CLICKABLE)
+        self.highscore_label.add_event_cb(self.on_highscore_tap, lv.EVENT.CLICKED, None)
         self.refresh_labels()
 
         self.build_board()
@@ -149,6 +156,73 @@ class Memory(Activity):
         self.moves_label.set_text(f"Moves: {self.moves}")
         self.points_label.set_text(f"Points: {self.total_points}")
         self.score_label.set_text(f"Score: {self.score}")
+        best = max(self.score, self.highscore)
+        self.highscore_label.set_text(f"Best: {best}")
+        if self.score > self.highscore and self.score > 0:
+            self.highscore_label.set_style_text_color(lv.color_hex(0xE74C3C), lv.PART.MAIN)
+        else:
+            self.highscore_label.set_style_text_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+
+    def _save_highscore(self):
+        best = max(self.score, self.highscore)
+        if best > self.highscore:
+            self.highscore = best
+            editor = SharedPreferences(self.appFullName).edit()
+            editor.put_int("highscore", self.highscore)
+            editor.commit()
+
+    def on_highscore_tap(self, event):
+        self.popup_modal = lv.obj(lv.layer_top())
+        self.popup_modal.set_size(DisplayMetrics.width(), DisplayMetrics.height())
+        self.popup_modal.set_style_bg_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        self.popup_modal.set_style_bg_opa(150, lv.PART.MAIN)
+        self.popup_modal.set_style_border_width(0, lv.PART.MAIN)
+        self.popup_modal.set_pos(0, 0)
+
+        popup = lv.obj(self.popup_modal)
+        popup.set_size(200, 120)
+        popup.set_style_bg_color(lv.color_hex(0xFFFFFF), lv.PART.MAIN)
+        popup.set_style_border_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        popup.set_style_border_width(3, lv.PART.MAIN)
+        popup.set_style_radius(10, lv.PART.MAIN)
+        popup.center()
+
+        question = lv.label(popup)
+        question.set_text("Reset highscore?")
+        question.set_style_text_color(lv.color_hex(0x000000), lv.PART.MAIN)
+        question.align(lv.ALIGN.TOP_MID, 0, 15)
+
+        yes_btn = lv.button(popup)
+        yes_btn.set_size(75, 35)
+        yes_btn.align(lv.ALIGN.BOTTOM_LEFT, 0, 0)
+        yes_btn.add_event_cb(self._on_reset_highscore_yes, lv.EVENT.CLICKED, None)
+        yes_label = lv.label(yes_btn)
+        yes_label.set_text("Yes")
+        yes_label.center()
+
+        no_btn = lv.button(popup)
+        no_btn.set_size(75, 35)
+        no_btn.align(lv.ALIGN.BOTTOM_RIGHT, 0, 0)
+        no_btn.add_event_cb(self._on_reset_highscore_no, lv.EVENT.CLICKED, None)
+        no_label = lv.label(no_btn)
+        no_label.set_text("No")
+        no_label.center()
+
+    def _close_popup(self):
+        if self.popup_modal:
+            self.popup_modal.delete()
+            self.popup_modal = None
+
+    def _on_reset_highscore_yes(self, event):
+        self.highscore = 0
+        editor = SharedPreferences(self.appFullName).edit()
+        editor.put_int("highscore", 0)
+        editor.commit()
+        self._close_popup()
+        self.refresh_labels()
+
+    def _on_reset_highscore_no(self, event):
+        self._close_popup()
 
     def on_button(self, event, idx):
         now = time.ticks_ms()
@@ -207,6 +281,7 @@ class Memory(Activity):
         if self._win_timer:
             lv.timer_del(self._win_timer)
             self._win_timer = None
+        self._save_highscore()
         self._last_ts = time.ticks_ms()
         self.level = 1
         self.total_points = 0
@@ -216,6 +291,8 @@ class Memory(Activity):
         self.refresh_labels()
 
     def onDestroy(self, screen):
+        self._save_highscore()
+        self._close_popup()
         if self._win_timer:
             lv.timer_del(self._win_timer)
             self._win_timer = None
