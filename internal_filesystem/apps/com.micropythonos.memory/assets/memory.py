@@ -181,18 +181,21 @@ class Memory(Activity):
             editor = SharedPreferences(self.appFullName).edit()
             editor.put_int("autosave_level", self.level)
             editor.put_int("autosave_score", self.score)
+            editor.put_int("autosave_points", self.total_points)
             editor.commit()
 
     def _delete_autosave(self):
         editor = SharedPreferences(self.appFullName).edit()
         editor.put_int("autosave_level", 0)
         editor.put_int("autosave_score", 0)
+        editor.put_int("autosave_points", 0)
         editor.commit()
 
     def _check_autoload(self):
         prefs = SharedPreferences(self.appFullName)
         saved_level = prefs.get_int("autosave_level", 0)
         saved_score = prefs.get_int("autosave_score", 0)
+        saved_points = prefs.get_int("autosave_points", 0)
         if saved_level == 0 and saved_score == 0:
             return
 
@@ -219,7 +222,7 @@ class Memory(Activity):
         yes_btn = lv.button(popup)
         yes_btn.set_size(75, 35)
         yes_btn.align(lv.ALIGN.BOTTOM_LEFT, 0, 0)
-        yes_btn.add_event_cb(lambda e: self._do_load(e, saved_level, saved_score), lv.EVENT.CLICKED, None)
+        yes_btn.add_event_cb(lambda e: self._do_load(e, saved_level, saved_score, saved_points), lv.EVENT.CLICKED, None)
         yes_label = lv.label(yes_btn)
         yes_label.set_text("Yes")
         yes_label.center()
@@ -232,10 +235,11 @@ class Memory(Activity):
         no_label.set_text("No")
         no_label.center()
 
-    def _do_load(self, event, saved_level, saved_score):
+    def _do_load(self, event, saved_level, saved_score, saved_points):
         self._close_popup()
         self.level = saved_level
         self.score = saved_score
+        self.total_points = saved_points
         self.new_game()
         self.build_board()
         self.refresh_labels()
