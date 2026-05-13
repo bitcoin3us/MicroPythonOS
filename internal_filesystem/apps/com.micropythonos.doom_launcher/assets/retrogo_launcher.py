@@ -327,6 +327,8 @@ class RetroGoLauncher(Activity):
         except Exception as e:
             print(f"Warning: could not write currently booted partition to boot_partition in fri3d.sys of NVS: {e}")
 
+        # Wait a few seconds so the user has time to switch off the device in the "boot to retro-go" state
+        # This is useful to capture debug logging, as this triggers a re-init of the USB-to-serial.
         self.status_label.set_text("Starting in 3 seconds...")
         await TaskManager.sleep(3)
 
