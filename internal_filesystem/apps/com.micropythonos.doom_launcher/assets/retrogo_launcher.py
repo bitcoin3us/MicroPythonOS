@@ -1,6 +1,6 @@
 import lvgl as lv
 import os
-from mpos import Activity, Intent, SettingsActivity, SettingActivity, SharedPreferences, TaskManager, sdcard
+from mpos import Activity, Intent, SettingsActivity, SharedPreferences, TaskManager, sdcard
 
 
 class RetroGoLauncher(Activity):
@@ -165,98 +165,37 @@ class RetroGoLauncher(Activity):
         self.refresh_file_list()
 
     def settings_button_tap(self, event):
-        global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
-        current_audio = "buzzer"
-        current_volume = "50"
-        try:
-            import json
-            fd = open(global_json_path, "r")
-            config = json.load(fd)
-            fd.close()
-            if config.get("AudioDriver") == "i2s":
-                current_audio = "i2s"
-            current_volume = str(config.get("Volume", 50))
-        except Exception:
-            pass
+        prefs = SharedPreferences("retro-go")
+        prefs.filepath = self.bootfile_prefix + self.retrogodir + "/config/global.json"
+        prefs.filename = "global.json"
+        prefs.load()
+        for key in list(prefs.data.keys()):
+            if not isinstance(prefs.data[key], str):
+                prefs.data[key] = str(prefs.data[key])
 
-        prefs = SharedPreferences(self.appFullName)
         intent = Intent(activity_class=SettingsActivity)
         intent.putExtra("prefs", prefs)
         intent.putExtra("settings", [
             {
                 "title": "Audio out",
-                "key": "audio_output",
+                "key": "AudioDriver",
                 "ui": "radiobuttons",
-                "dont_persist": True,
-                "default_value": current_audio,
+                "default_value": "buzzer",
                 "ui_options": [
                     ("Buzzer", "buzzer"),
                     ("Ext DAC", "i2s"),
                 ],
-                "changed_callback": self._apply_audio_output,
             },
             {
                 "title": "Volume",
-                "key": "audio_volume",
+                "key": "Volume",
                 "ui": "slider",
-                "dont_persist": True,
-                "default_value": current_volume,
+                "default_value": "50",
                 "min": 0,
                 "max": 100,
-                "changed_callback": self._apply_volume,
             },
         ])
         self.startActivity(intent)
-
-    def _apply_audio_output(self, new_value):
-        import json
-        global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
-        config = {}
-        try:
-            fd = open(global_json_path, "r")
-            config = json.load(fd)
-            fd.close()
-        except Exception:
-            pass
-        if new_value == "buzzer":
-            config["AudioDriver"] = "buzzer"
-            config["AudioDevice"] = 0
-        elif new_value == "i2s":
-            config["AudioDriver"] = "i2s"
-            config["AudioDevice"] = 1
-        try:
-            fd = open(global_json_path, "w")
-            json.dump(config, fd)
-            fd.close()
-        except Exception as e:
-            print(f"Error writing {global_json_path}: {e}")
-
-    def _apply_volume(self, new_value):
-        import json
-        try:
-            vol = int(new_value)
-            if vol < 0:
-                vol = 0
-            elif vol > 100:
-                vol = 100
-        except (ValueError, TypeError):
-            print(f"Invalid volume value: {new_value}")
-            return
-        global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
-        config = {}
-        try:
-            fd = open(global_json_path, "r")
-            config = json.load(fd)
-            fd.close()
-        except Exception:
-            pass
-        config["Volume"] = vol
-        try:
-            fd = open(global_json_path, "w")
-            json.dump(config, fd)
-            fd.close()
-        except Exception as e:
-            print(f"Error writing {global_json_path}: {e}")
 
     def mkdir(self, dirname):
         try:
