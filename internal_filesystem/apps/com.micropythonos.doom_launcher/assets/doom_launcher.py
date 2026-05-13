@@ -2,7 +2,7 @@ from mpos import Activity, Intent
 from launcher_activity import LauncherActivity
 
 
-class Main(Activity):
+class DoomLauncher(Activity):
 
     def onCreate(self):
         self.startActivity(
