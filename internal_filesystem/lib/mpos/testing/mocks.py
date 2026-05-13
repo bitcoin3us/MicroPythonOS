@@ -747,11 +747,12 @@ class MockDownloadManager:
     
     async def download_url(self, url, outfile=None, total_size=None,
                           progress_callback=None, chunk_callback=None, headers=None,
-                          speed_callback=None):
+                          speed_callback=None, redact_url=False):
         """Mock async download with flexible output modes."""
         self.url_received = url
         self.headers_received = headers
-        
+        self.redact_url_received = redact_url
+
         self.call_history.append({
             'url': url,
             'outfile': outfile,
@@ -759,7 +760,8 @@ class MockDownloadManager:
             'headers': headers,
             'has_progress_callback': progress_callback is not None,
             'has_chunk_callback': chunk_callback is not None,
-            'has_speed_callback': speed_callback is not None
+            'has_speed_callback': speed_callback is not None,
+            'redact_url': redact_url,
         })
         
         if self.should_fail:

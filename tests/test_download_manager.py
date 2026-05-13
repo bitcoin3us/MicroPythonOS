@@ -547,3 +547,73 @@ class TestDownloadManager(unittest.TestCase):
         # Verify progress values are in valid range
         for pct in progress_calls:
             self.assertTrue(0 <= pct <= 100)
+
+
+class TestSafeUrl(unittest.TestCase):
+    """Unit tests for the `_safe_url` helper used by `redact_url=True`."""
+
+    def test_https_with_path_and_query(self):
+        u = "https://btc1.trezor.io/api/v2/xpub/zpub6q...secret...stuff?details=txs&tokens=derived"
+        self.assertEqual(DownloadManager._safe_url(u), "https://btc1.trezor.io/...REDACTED...")
+
+    def test_http_with_port_and_path(self):
+        u = "http://api.example.com:8080/path/secret?key=abc"
+        self.assertEqual(DownloadManager._safe_url(u), "http://api.example.com:8080/...REDACTED...")
+
+    def test_naked_host_no_path_returned_unchanged(self):
+        # Nothing sensitive after the host — nothing to strip.
+        u = "https://example.com"
+        self.assertEqual(DownloadManager._safe_url(u), "https://example.com")
+
+    def test_trailing_slash_only(self):
+        # `https://example.com/` has an empty path; safe to redact as the
+        # function still finds a `/` after the scheme.
+        u = "https://example.com/"
+        self.assertEqual(DownloadManager._safe_url(u), "https://example.com/...REDACTED...")
+
+    def test_malformed_url_returns_generic_placeholder(self):
+        # Anything without `://` is treated as untrusted — replace whole.
+        self.assertEqual(DownloadManager._safe_url("not-a-url-at-all"), "...REDACTED...")
+
+    def test_secret_substrings_never_appear_in_redacted_output(self):
+        # Belt-and-braces check: the secret-bearing parts of the input
+        # must not appear in the redacted output. Catches future regressions
+        # where the redaction logic might accidentally keep a substring.
+        u = "https://idx.example.com/wallet/SECRETxpubABCDEFG?key=TOKEN_VALUE"
+        safe = DownloadManager._safe_url(u)
+        # MicroPython's unittest port has assertIn but not assertNotIn — use
+        # assertFalse(... in ...) for the negative case.
+        self.assertFalse("SECRETxpub" in safe)
+        self.assertFalse("TOKEN_VALUE" in safe)
+        self.assertIn("https://idx.example.com", safe)  # host kept on purpose
+
+
+class TestRedactUrlKwarg(unittest.TestCase):
+    """Verify the redact_url kwarg flows through the call surface (sync wrapper
+    + async impl + mock) without changing default behaviour."""
+
+    def test_mock_records_redact_url_default_false(self):
+        import asyncio
+        mock = MockDownloadManager()
+        # Configure a stub payload so download_url returns deterministic data
+        mock.download_data = b"x"
+
+        async def go():
+            await mock.download_url("https://example.com/path")
+        asyncio.run(go())
+
+        # Default: redact_url not requested.
+        self.assertEqual(mock.call_history[-1]['redact_url'], False)
+        self.assertEqual(mock.redact_url_received, False)
+
+    def test_mock_records_redact_url_true_when_passed(self):
+        import asyncio
+        mock = MockDownloadManager()
+        mock.download_data = b"x"
+
+        async def go():
+            await mock.download_url("https://example.com/path", redact_url=True)
+        asyncio.run(go())
+
+        self.assertEqual(mock.call_history[-1]['redact_url'], True)
+        self.assertEqual(mock.redact_url_received, True)
