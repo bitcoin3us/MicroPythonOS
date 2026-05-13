@@ -1,6 +1,6 @@
 import lvgl as lv
 import os
-from mpos import Activity, TaskManager, sdcard
+from mpos import Activity, Intent, SettingActivity, SharedPreferences, TaskManager, sdcard
 
 
 class LauncherActivity(Activity):
@@ -24,6 +24,7 @@ class LauncherActivity(Activity):
         self.retrogodir = "/retro-go"
         self.configdir = self.retrogodir + "/config"
         self.bootfile = self.configdir + "/boot.json"
+        self.current_subdir = ""
 
         screen = lv.obj()
         screen.set_style_pad_all(15, lv.PART.MAIN)
@@ -35,6 +36,18 @@ class LauncherActivity(Activity):
         self.wadlist = lv.list(screen)
         self.wadlist.set_size(lv.pct(100), lv.pct(70))
         self.wadlist.center()
+
+        self.settings_button = lv.button(screen)
+        settings_margin = 15
+        settings_size = 44
+        self.settings_button.set_size(settings_size, settings_size)
+        self.settings_button.align(lv.ALIGN.TOP_RIGHT, -settings_margin, 10)
+        self.settings_button.add_event_cb(self.settings_button_tap, lv.EVENT.CLICKED, None)
+        settings_label = lv.label(self.settings_button)
+        settings_label.set_text(lv.SYMBOL.SETTINGS)
+        settings_label.set_style_text_font(lv.font_montserrat_24, lv.PART.MAIN)
+        settings_label.center()
+        self.settings_button.move_to_index(-1)
 
         self.status_label = lv.label(screen)
         self.status_label.set_width(lv.pct(90))
@@ -54,6 +67,25 @@ class LauncherActivity(Activity):
         print(f"writing to {self.bootfile_to_write}")
 
         self.refresh_file_list()
+
+    def scan_subdirs(self, directory):
+        subdirs = []
+        try:
+            for entry in os.listdir(directory):
+                if entry.startswith("."):
+                    continue
+                full = directory + "/" + entry
+                try:
+                    if os.stat(full)[0] & 0x4000:
+                        subdirs.append(entry)
+                except Exception:
+                    pass
+            subdirs.sort()
+        except OSError:
+            pass
+        except Exception as e:
+            print(f"Error scanning subdirectories in {directory}: {e}")
+        return subdirs
 
     def scan_files(self, directory):
         matching_files = []
@@ -81,31 +113,109 @@ class LauncherActivity(Activity):
         return ""
 
     def refresh_file_list(self):
-        self.status_label.set_text(f"Listing files in: {self.bootfile_prefix + self.gamedir}")
-        print("refresh_file_list: Clearing current list")
+        current_full_dir = self.bootfile_prefix + self.gamedir
+        if self.current_subdir:
+            current_full_dir += "/" + self.current_subdir
+
+        self.status_label.set_text(f"Listing: {current_full_dir}")
+        print(f"refresh_file_list: Clearing current list (dir={self.current_subdir})")
         self.wadlist.clean()
 
-        all_files = self.scan_files(self.bootfile_prefix + self.gamedir)
+        subdirs = self.scan_subdirs(current_full_dir)
+        all_files = self.scan_files(current_full_dir)
 
-        if len(all_files) == 0:
-            self.status_label.set_text(f"No files found in {self.gamedir}")
+        if not subdirs and not all_files:
+            self.status_label.set_text(f"No files found in {current_full_dir}")
             print("No files found")
             return
 
-        print(f"refresh_file_list: Populating list with {len(all_files)} files")
-        self.status_label.set_text(f"Listed files in: {self.bootfile_prefix + self.gamedir}")
+        print(f"refresh_file_list: {len(subdirs)} dirs, {len(all_files)} files")
+
+        if self.current_subdir:
+            button = self.wadlist.add_button(None, "..")
+            button.add_event_cb(lambda e: self.navigate_up(), lv.EVENT.CLICKED, None)
+
+        for d in subdirs:
+            button = self.wadlist.add_button(None, d + "/")
+            button.add_event_cb(lambda e, dirname=d: self.navigate_into(dirname), lv.EVENT.CLICKED, None)
+
         for f in all_files:
-            warning = self.get_file_size_warning(self.bootfile_prefix + self.gamedir + "/" + f)
+            fullpath = self.gamedir + "/" + self.current_subdir + "/" + f if self.current_subdir else self.gamedir + "/" + f
+            warning = self.get_file_size_warning(current_full_dir + "/" + f)
             button_text = f + warning
             button = self.wadlist.add_button(None, button_text)
             button.add_event_cb(
-                lambda e, p=self.gamedir + "/" + f: TaskManager.create_task(self.start_game(self.bootfile_prefix, self.bootfile_to_write, p)),
+                lambda e, p=fullpath: TaskManager.create_task(self.start_game(self.bootfile_prefix, self.bootfile_to_write, p)),
                 lv.EVENT.CLICKED, None
             )
 
-        if len(all_files) == 1:
-            print(f"refresh_file_list: Only one file found, auto-starting: {all_files[0]}")
-            TaskManager.create_task(self.start_game(self.bootfile_prefix, self.bootfile_to_write, self.gamedir + "/" + all_files[0]))
+    def navigate_into(self, subdir):
+        if self.current_subdir:
+            self.current_subdir += "/" + subdir
+        else:
+            self.current_subdir = subdir
+        self.refresh_file_list()
+
+    def navigate_up(self):
+        if not self.current_subdir:
+            return
+        parts = self.current_subdir.split("/")
+        parts.pop()
+        self.current_subdir = "/".join(parts)
+        self.refresh_file_list()
+
+    def settings_button_tap(self, event):
+        current_output = "buzzer"
+        global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
+        try:
+            import json
+            fd = open(global_json_path, "r")
+            config = json.load(fd)
+            fd.close()
+            if config.get("AudioDriver") == "i2s":
+                current_output = "i2s"
+        except Exception:
+            pass
+
+        prefs = SharedPreferences(self.appFullName)
+        intent = Intent(activity_class=SettingActivity)
+        intent.putExtra("prefs", prefs)
+        intent.putExtra("setting", {
+            "title": "Audio out",
+            "key": "audio_output",
+            "ui": "radiobuttons",
+            "default_value": current_output,
+            "dont_persist": True,
+            "ui_options": [
+                ("Buzzer", "buzzer"),
+                ("Ext DAC", "i2s"),
+            ],
+            "changed_callback": self._apply_audio_output,
+        })
+        self.startActivity(intent)
+
+    def _apply_audio_output(self, new_value):
+        import json
+        global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
+        config = {}
+        try:
+            fd = open(global_json_path, "r")
+            config = json.load(fd)
+            fd.close()
+        except Exception:
+            pass
+        if new_value == "buzzer":
+            config["AudioDriver"] = "buzzer"
+            config["AudioDevice"] = 0
+        elif new_value == "i2s":
+            config["AudioDriver"] = "i2s"
+            config["AudioDevice"] = 1
+        try:
+            fd = open(global_json_path, "w")
+            json.dump(config, fd)
+            fd.close()
+        except Exception as e:
+            print(f"Error writing {global_json_path}: {e}")
 
     def mkdir(self, dirname):
         try:
@@ -177,9 +287,6 @@ class LauncherActivity(Activity):
                 print("No need to update boot_partition")
         except Exception as e:
             print(f"Warning: could not write currently booted partition to boot_partition in fri3d.sys of NVS: {e}")
-
-        #self.status_label.set_text(f"Starting in 5 seconds...")
-        #await TaskManager.sleep(5)
 
         try:
             import machine
