@@ -20,6 +20,7 @@ class SettingActivity(Activity):
     textarea = None
     dropdown = None
     radio_container = None
+    slider = None
 
     def onCreate(self):
         self.prefs = self.getIntent().extras.get("prefs")
@@ -82,6 +83,27 @@ class SettingActivity(Activity):
                 if current_setting == option_value:
                     self.dropdown.set_selected(i)
                     break # no need to check the rest because only one can be selected
+        elif ui and ui == "slider":
+            slider_min = setting.get("min", 0)
+            slider_max = setting.get("max", 100)
+            try:
+                current_val = int(current_setting) if current_setting else slider_min
+            except (ValueError, TypeError):
+                current_val = slider_min
+            current_val = max(slider_min, min(slider_max, current_val))
+
+            self._slider_val_label = lv.label(settings_screen_detail)
+            self._slider_val_label.set_text(str(current_val))
+            self._slider_val_label.set_style_text_font(lv.font_montserrat_24, lv.PART.MAIN)
+            self._slider_val_label.set_style_pad_top(DisplayMetrics.pct_of_width(6), lv.PART.MAIN)
+
+            self.slider = lv.slider(settings_screen_detail)
+            self.slider.set_range(slider_min, slider_max)
+            self.slider.set_value(current_val, False)
+            self.slider.set_width(lv.pct(90))
+            def slider_changed(e):
+                self._slider_val_label.set_text(str(self.slider.get_value()))
+            self.slider.add_event_cb(slider_changed, lv.EVENT.VALUE_CHANGED, None)
         else: # Textarea for other settings
             ui = "textarea"
             self.textarea = lv.textarea(settings_screen_detail)
@@ -220,6 +242,8 @@ class SettingActivity(Activity):
             selected_index = self.dropdown.get_selected()
             print(f"selected item: {selected_index}")
             new_value = ui_options[selected_index][1]
+        elif ui and ui == "slider":
+            new_value = str(self.slider.get_value())
         elif self.textarea:
             new_value = self.textarea.get_text()
         else:

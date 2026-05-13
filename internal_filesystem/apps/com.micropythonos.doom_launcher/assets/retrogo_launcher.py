@@ -198,9 +198,11 @@ class RetroGoLauncher(Activity):
             {
                 "title": "Volume",
                 "key": "audio_volume",
+                "ui": "slider",
                 "dont_persist": True,
                 "default_value": current_volume,
-                "placeholder": "0-100",
+                "min": 0,
+                "max": 100,
                 "changed_callback": self._apply_volume,
             },
         ])
