@@ -1,6 +1,6 @@
 import lvgl as lv
 import os
-from mpos import Activity, Intent, SettingActivity, SharedPreferences, TaskManager, sdcard
+from mpos import Activity, Intent, SettingsActivity, SettingActivity, SharedPreferences, TaskManager, sdcard
 
 
 class LauncherActivity(Activity):
@@ -165,33 +165,45 @@ class LauncherActivity(Activity):
         self.refresh_file_list()
 
     def settings_button_tap(self, event):
-        current_output = "buzzer"
+        prefs = SharedPreferences(self.appFullName)
         global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
+
         try:
             import json
             fd = open(global_json_path, "r")
             config = json.load(fd)
             fd.close()
-            if config.get("AudioDriver") == "i2s":
-                current_output = "i2s"
+            editor = prefs.edit()
+            current_audio = "buzzer" if config.get("AudioDriver") != "i2s" else "i2s"
+            editor.put_string("audio_output", current_audio)
+            current_volume = str(config.get("AudioVolume", 50))
+            editor.put_string("audio_volume", current_volume)
+            editor.commit()
         except Exception:
             pass
 
-        prefs = SharedPreferences(self.appFullName)
-        intent = Intent(activity_class=SettingActivity)
+        intent = Intent(activity_class=SettingsActivity)
         intent.putExtra("prefs", prefs)
-        intent.putExtra("setting", {
-            "title": "Audio out",
-            "key": "audio_output",
-            "ui": "radiobuttons",
-            "default_value": current_output,
-            "dont_persist": True,
-            "ui_options": [
-                ("Buzzer", "buzzer"),
-                ("Ext DAC", "i2s"),
-            ],
-            "changed_callback": self._apply_audio_output,
-        })
+        intent.putExtra("settings", [
+            {
+                "title": "Audio out",
+                "key": "audio_output",
+                "ui": "radiobuttons",
+                "default_value": "buzzer",
+                "ui_options": [
+                    ("Buzzer", "buzzer"),
+                    ("Ext DAC", "i2s"),
+                ],
+                "changed_callback": self._apply_audio_output,
+            },
+            {
+                "title": "Volume",
+                "key": "audio_volume",
+                "default_value": "50",
+                "placeholder": "0-100",
+                "changed_callback": self._apply_volume,
+            },
+        ])
         self.startActivity(intent)
 
     def _apply_audio_output(self, new_value):
@@ -210,6 +222,33 @@ class LauncherActivity(Activity):
         elif new_value == "i2s":
             config["AudioDriver"] = "i2s"
             config["AudioDevice"] = 1
+        try:
+            fd = open(global_json_path, "w")
+            json.dump(config, fd)
+            fd.close()
+        except Exception as e:
+            print(f"Error writing {global_json_path}: {e}")
+
+    def _apply_volume(self, new_value):
+        import json
+        try:
+            vol = int(new_value)
+            if vol < 0:
+                vol = 0
+            elif vol > 100:
+                vol = 100
+        except (ValueError, TypeError):
+            print(f"Invalid volume value: {new_value}")
+            return
+        global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
+        config = {}
+        try:
+            fd = open(global_json_path, "r")
+            config = json.load(fd)
+            fd.close()
+        except Exception:
+            pass
+        config["AudioVolume"] = vol
         try:
             fd = open(global_json_path, "w")
             json.dump(config, fd)
