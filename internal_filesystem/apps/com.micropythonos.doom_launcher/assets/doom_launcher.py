@@ -1,5 +1,5 @@
 from mpos import Activity, Intent
-from launcher_activity import RetroGoLauncher
+from retrogo_launcher import RetroGoLauncher
 
 
 class DoomLauncher(Activity):

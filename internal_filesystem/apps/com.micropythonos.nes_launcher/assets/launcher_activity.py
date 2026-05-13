@@ -1,1 +1,0 @@
-../../com.micropythonos.doom_launcher/assets/launcher_activity.py
