@@ -178,6 +178,9 @@ class LauncherActivity(Activity):
         except Exception as e:
             print(f"Warning: could not write currently booted partition to boot_partition in fri3d.sys of NVS: {e}")
 
+        #self.status_label.set_text(f"Starting in 5 seconds...")
+        #await TaskManager.sleep(5)
+
         try:
             import machine
             machine.reset()

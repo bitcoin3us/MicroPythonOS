@@ -1,5 +1,5 @@
 import lvgl as lv
-from mpos import Activity, ui
+from mpos import Activity, sdcard, ui
 
 class FileManager(Activity):
 
@@ -7,6 +7,7 @@ class FileManager(Activity):
     file_explorer = None
 
     def onCreate(self):
+        sdcard.mount_with_optional_format('/sdcard')
         #lv.log_register_print_cb(self.log_callback)
         screen = lv.obj()
         self.file_explorer = lv.file_explorer(screen)
@@ -22,6 +23,9 @@ class FileManager(Activity):
         self.file_explorer.explorer_set_quick_access_path(lv.EXPLORER.HOME_DIR, "M:/home/user/")
         self.file_explorer.explorer_set_quick_access_path(lv.EXPLORER.PICTURES_DIR, "M:/data/images/")
         self.setContentView(screen)
+
+    def onResume(self, screen):
+        sdcard.mount_with_optional_format('/sdcard')
 
     def file_explorer_event_cb(self, event):
         event_code = event.get_code()
