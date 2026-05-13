@@ -148,6 +148,7 @@ class Main(Activity):
                 "BootSlot": -1,
                 "BootFlags": 0
             }
+            print(f"Writing boot config: {bootconfig}")
             json.dump(bootconfig, fd)
             fd.close()
         except Exception as e:
