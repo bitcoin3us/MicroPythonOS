@@ -17,7 +17,6 @@ class Main(Activity):
     status_label = None
     wadlist = None
     bootfile_prefix = ""
-    boot_args_prefix = ""
     bootfile_to_write = ""
 
     def onCreate(self):
@@ -47,12 +46,10 @@ class Main(Activity):
     def onResume(self, screen):
         # Try to mount the SD card and if successful, use it, as retro-go can only use one or the other:
         self.bootfile_prefix = ""
-        self.boot_args_prefix = ""
         mounted_sdcard = sdcard.mount_with_optional_format(self.mountpoint_sdcard)
         if mounted_sdcard:
             print("sdcard is mounted, configuring it...")
             self.bootfile_prefix = self.mountpoint_sdcard
-            self.boot_args_prefix = "/sd"
         self.bootfile_to_write = self.bootfile_prefix + self.bootfile
         print(f"writing to {self.bootfile_to_write}")
         
@@ -112,12 +109,12 @@ class Main(Activity):
             warning = self.get_file_size_warning(self.bootfile_prefix + self.doomdir + '/' + wad_file)
             button_text = wad_file + warning
             button = self.wadlist.add_button(None, button_text)
-            button.add_event_cb(lambda e, p=self.doomdir + '/' + wad_file: TaskManager.create_task(self.start_wad(self.bootfile_prefix, self.boot_args_prefix, self.bootfile_to_write, p)), lv.EVENT.CLICKED, None)
+            button.add_event_cb(lambda e, p=self.doomdir + '/' + wad_file: TaskManager.create_task(self.start_wad(self.bootfile_prefix, self.bootfile_to_write, p)), lv.EVENT.CLICKED, None)
 
         # If only one WAD file, auto-start it
         if len(all_wads) == 1:
             print(f"refresh_wad_list: Only one WAD file found, auto-starting: {all_wads[0]}")
-            TaskManager.create_task(self.start_wad(self.bootfile_prefix, self.boot_args_prefix, self.bootfile_to_write, self.doomdir + '/' + all_wads[0]))
+            TaskManager.create_task(self.start_wad(self.bootfile_prefix, self.bootfile_to_write, self.doomdir + '/' + all_wads[0]))
 
     def mkdir(self, dirname):
         # Would be better to only create it if it doesn't exist
@@ -127,8 +124,8 @@ class Main(Activity):
             # Not really useful to show this in the UI, as it's usually just an "already exists" error:
             print(f"Info: could not create directory {dirname} because: {e}")
 
-    async def start_wad(self, bootfile_prefix, boot_args_prefix, bootfile_to_write, wadfile):
-        self.status_label.set_text(f"Launching Doom with file: {boot_args_prefix}{wadfile}")
+    async def start_wad(self, bootfile_prefix, bootfile_to_write, wadfile):
+        self.status_label.set_text(f"Launching Doom with file: {bootfile_prefix}{wadfile}")
         await TaskManager.sleep(1) # Give the user a minimal amount of time to read the filename
 
         # Create these folders, in case the user wants to add doom later:
@@ -142,9 +139,10 @@ class Main(Activity):
             import json
             # Would be better to only write this if it differs from what's already there:
             fd = open(bootfile_to_write, 'w')
+                # "BootArgs": f"/sd{wadfile}",
             bootconfig = {
                 "BootName": "doom",
-                "BootArgs": f"{boot_args_prefix}{wadfile}",
+                "BootArgs": f"{wadfile}",
                 "BootSlot": -1,
                 "BootFlags": 0
             }
