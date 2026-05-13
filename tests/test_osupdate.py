@@ -17,15 +17,24 @@ class MockPartition:
     """Mock ESP32 Partition for testing UpdateDownloader."""
 
     RUNNING = 0
+    TYPE_APP = 0
+    TYPE_DATA = 1
 
-    def __init__(self, partition_type=None):
+    def __init__(self, partition_type=None, label="ota_0"):
         self.partition_type = partition_type
         self.blocks = {}  # Store written blocks
         self.boot_set = False
+        self._label = label
 
-    def get_next_update(self):
-        """Return a mock OTA partition."""
-        return MockPartition()
+    def info(self):
+        """Return mock partition info tuple: (type, subtype, addr, size, label, encrypted)."""
+        subtype = 0x10 if self._label == "ota_0" else 0x11
+        return (0, subtype, 0, 0x400000, self._label, False)
+
+    @classmethod
+    def find(cls, type=-1, subtype=-1, label=None):
+        """Return a list with a mock partition matching the given label."""
+        return [cls(label=label)]
 
     def writeblocks(self, block_num, data):
         """Mock writing blocks."""

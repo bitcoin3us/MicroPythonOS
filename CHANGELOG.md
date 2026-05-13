@@ -3,6 +3,12 @@ Future release (next version)
 
 Add changes that have been made to the code but haven't made it into a release here.
 
+Builtin Apps:
+- OSUpdate: fix get_next_update() partition returning higher, non-OS partitions (only toggle between ota_0 and ota_1)
+
+Frameworks:
+- SettingActivity: support slider UI for integer settings
+
 Board Support:
 - Fri3d 2026: access expander.analog as property instead of function
 
