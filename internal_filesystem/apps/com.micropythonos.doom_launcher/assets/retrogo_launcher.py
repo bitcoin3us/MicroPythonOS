@@ -165,23 +165,21 @@ class RetroGoLauncher(Activity):
         self.refresh_file_list()
 
     def settings_button_tap(self, event):
-        prefs = SharedPreferences(self.appFullName)
         global_json_path = self.bootfile_prefix + self.retrogodir + "/config/global.json"
-
+        current_audio = "buzzer"
+        current_volume = "50"
         try:
             import json
             fd = open(global_json_path, "r")
             config = json.load(fd)
             fd.close()
-            editor = prefs.edit()
-            current_audio = "buzzer" if config.get("AudioDriver") != "i2s" else "i2s"
-            editor.put_string("audio_output", current_audio)
+            if config.get("AudioDriver") == "i2s":
+                current_audio = "i2s"
             current_volume = str(config.get("Volume", 50))
-            editor.put_string("audio_volume", current_volume)
-            editor.commit()
         except Exception:
             pass
 
+        prefs = SharedPreferences(self.appFullName)
         intent = Intent(activity_class=SettingsActivity)
         intent.putExtra("prefs", prefs)
         intent.putExtra("settings", [
@@ -189,7 +187,8 @@ class RetroGoLauncher(Activity):
                 "title": "Audio out",
                 "key": "audio_output",
                 "ui": "radiobuttons",
-                "default_value": "buzzer",
+                "dont_persist": True,
+                "default_value": current_audio,
                 "ui_options": [
                     ("Buzzer", "buzzer"),
                     ("Ext DAC", "i2s"),
@@ -199,7 +198,8 @@ class RetroGoLauncher(Activity):
             {
                 "title": "Volume",
                 "key": "audio_volume",
-                "default_value": "50",
+                "dont_persist": True,
+                "default_value": current_volume,
                 "placeholder": "0-100",
                 "changed_callback": self._apply_volume,
             },
