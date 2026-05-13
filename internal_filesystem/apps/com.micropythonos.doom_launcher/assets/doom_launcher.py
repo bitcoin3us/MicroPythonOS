@@ -1,12 +1,12 @@
 from mpos import Activity, Intent
-from launcher_activity import LauncherActivity
+from launcher_activity import RetroGoLauncher
 
 
 class DoomLauncher(Activity):
 
     def onCreate(self):
         self.startActivity(
-            Intent(activity_class=LauncherActivity)
+            Intent(activity_class=RetroGoLauncher)
             .putExtra("title", "Choose your DOOM:")
             .putExtra("roms_subdir", "doom")
             .putExtra("partition_label", "prboom-go")

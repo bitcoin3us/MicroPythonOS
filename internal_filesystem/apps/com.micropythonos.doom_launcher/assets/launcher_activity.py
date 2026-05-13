@@ -3,7 +3,7 @@ import os
 from mpos import Activity, Intent, SettingsActivity, SettingActivity, SharedPreferences, TaskManager, sdcard
 
 
-class LauncherActivity(Activity):
+class RetroGoLauncher(Activity):
 
     mountpoint_sdcard = "/sdcard"
     esp32_partition_type_ota_0 = 16
