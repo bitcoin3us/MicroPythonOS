@@ -255,14 +255,22 @@ class RetroGoLauncher(Activity):
         try:
             from esp32 import NVS
             nvs = NVS("fri3d.sys")
-            boot_partition = nvs.get_i32("boot_partition")
-            print(f"boot_partition in fri3d.sys of NVS: {boot_partition}")
+            try:
+                boot_partition = nvs.get_i32("boot_partition")
+                print(f"boot_partition in fri3d.sys of NVS: {boot_partition}")
+            except OSError:
+                boot_partition = -1
+                print("boot_partition key not found in NVS, will create it")
             running_partition = Partition(Partition.RUNNING)
             running_partition_nr = running_partition.info()[1] - self.esp32_partition_type_ota_0
             print(f"running_partition_nr: {running_partition_nr}")
             if running_partition_nr != boot_partition:
                 print(f"setting boot_partition in fri3d.sys of NVS to {running_partition_nr}")
                 nvs.set_i32("boot_partition", running_partition_nr)
+                try:
+                    nvs.commit()
+                except Exception:
+                    pass
             else:
                 print("No need to update boot_partition")
         except Exception as e:
