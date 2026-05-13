@@ -327,6 +327,9 @@ class RetroGoLauncher(Activity):
         except Exception as e:
             print(f"Warning: could not write currently booted partition to boot_partition in fri3d.sys of NVS: {e}")
 
+        self.status_label.set_text("Starting in 3 seconds...")
+        await TaskManager.sleep(3)
+
         try:
             import machine
             machine.reset()
