@@ -1,5 +1,6 @@
 import lvgl as lv
-from mpos import Activity, sdcard, ui
+from mpos import Activity, Intent, sdcard, ui
+from action_activity import ActionActivity
 
 class FileManager(Activity):
 
@@ -29,7 +30,7 @@ class FileManager(Activity):
 
     def file_explorer_event_cb(self, event):
         event_code = event.get_code()
-        # Ignore:	
+        # Ignore:
         # =======
         # 2: PRESSING
         # 19: HIT_TEST
@@ -48,8 +49,11 @@ class FileManager(Activity):
             print(f"file_explorer_event_cb {event_code} with name {name}")
             if event_code == lv.EVENT.VALUE_CHANGED:
                 path = self.file_explorer.explorer_get_current_path()
+                clean_path = path[2:] if path[1] == ':' else path
                 file = self.file_explorer.explorer_get_selected_file_name()
-                print(f"Selected: {path}{file}")
+                fullpath = f"{clean_path}{file}"
+                print(f"Selected: {fullpath}")
+                self.startActivity(Intent(activity_class=ActionActivity).putExtra("path", fullpath))
 
     # Custom log callback to capture FPS
     def log_callback(self, level, log_str):
