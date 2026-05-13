@@ -9,6 +9,9 @@ Board Support:
 OS:
 - Disable the repl on hardware uart for esp32s3 targets (USB serial still works)
 
+Frameworks:
+- SettingsActivity / SettingActivity: when a setting has `ui_options` (a list of `(label, value)` tuples used by `ui: "radiobuttons"` or `"dropdown"`), the row's value label now shows the human-readable label instead of the raw pref value — both on initial render and after a save. Previously a radiobuttons setting like `[("Lightning Piggy", "lightningpiggy"), ...]` would show "lightningpiggy" in the row beneath the title; now it shows "Lightning Piggy". Stored values not present in the current `ui_options` list pass through unchanged so stale prefs stay visible rather than collapsing to "(not set)".
+
 0.9.5
 =====
 

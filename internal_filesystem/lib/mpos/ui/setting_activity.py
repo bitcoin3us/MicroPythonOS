@@ -232,10 +232,24 @@ class SettingActivity(Activity):
             editor.put_string(setting["key"], new_value)
             editor.commit()
 
-        # Update model for UI
+        # Update model for UI. For settings with `ui_options`, the value_label
+        # should show the human-readable label (e.g. "Lightning Piggy"), not
+        # the raw stored value ("lightningpiggy"). Mirrors the list-view
+        # rendering in settings_activity.py:_value_label_for so the row stays
+        # consistent before and after a save.
         value_label = setting.get("value_label")
         if value_label:
-            value_label.set_text(new_value if new_value else "(not set)")
+            if not new_value:
+                value_label.set_text("(not set)")
+            else:
+                display = new_value
+                ui_options = setting.get("ui_options")
+                if ui_options:
+                    for label, value in ui_options:
+                        if value == new_value:
+                            display = label
+                            break
+                value_label.set_text(display)
 
         # self.finish (= back action) should happen before callback, in case it happens to start a new activity
         self.finish()
