@@ -176,7 +176,7 @@ class RetroGoLauncher(Activity):
             editor = prefs.edit()
             current_audio = "buzzer" if config.get("AudioDriver") != "i2s" else "i2s"
             editor.put_string("audio_output", current_audio)
-            current_volume = str(config.get("AudioVolume", 50))
+            current_volume = str(config.get("Volume", 50))
             editor.put_string("audio_volume", current_volume)
             editor.commit()
         except Exception:
@@ -248,7 +248,7 @@ class RetroGoLauncher(Activity):
             fd.close()
         except Exception:
             pass
-        config["AudioVolume"] = vol
+        config["Volume"] = vol
         try:
             fd = open(global_json_path, "w")
             json.dump(config, fd)
