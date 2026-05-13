@@ -139,10 +139,10 @@ class Main(Activity):
             import json
             # Would be better to only write this if it differs from what's already there:
             fd = open(bootfile_to_write, 'w')
-                # "BootArgs": f"/sd{wadfile}",
+            # in retro-go, sdcard overrides internal storage and internal storage is always mounted at /sd (confusingly) 
             bootconfig = {
                 "BootName": "doom",
-                "BootArgs": f"{wadfile}",
+                "BootArgs": f"/sd{wadfile}",
                 "BootSlot": -1,
                 "BootFlags": 0
             }
