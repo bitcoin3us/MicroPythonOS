@@ -95,10 +95,11 @@ class About(Activity):
             # Partition info (ESP32 only)
             try:
                 self._add_label(screen, f"{lv.SYMBOL.SD_CARD} Partition Info", is_header=True)
+                from mpos.partitions import get_next_update_partition
                 from esp32 import Partition
                 current = Partition(Partition.RUNNING)
                 self._add_label(screen, f"Partition.RUNNING: {current}")
-                next_partition = current.get_next_update()
+                next_partition = get_next_update_partition()
                 self._add_label(screen, f"Next update partition: {next_partition}")
             except Exception as e:
                 error = f"Could not find partition info because: {e}\nIt's normal to get this error on desktop."

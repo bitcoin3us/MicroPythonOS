@@ -463,16 +463,10 @@ class UpdateDownloader:
     def _setup_partition(self):
         """Initialize the OTA partition for writing."""
         if not self.simulate and self._current_partition is None:
-            current = self.partition_module(self.partition_module.RUNNING)
-            current_label = current.info()[4]
-            next_label = "ota_0" if current_label == "ota_1" else "ota_1"
-            partitions = self.partition_module.find(
-                self.partition_module.TYPE_APP,
-                label=next_label
+            from mpos.partitions import get_next_update_partition
+            self._current_partition = get_next_update_partition(
+                partition_module=self.partition_module
             )
-            if not partitions:
-                raise Exception(f"UpdateDownloader: Could not find partition: {next_label}")
-            self._current_partition = partitions[0]
             print(f"UpdateDownloader: Writing to partition: {self._current_partition}")
 
     async def _process_chunk(self, chunk):
@@ -690,16 +684,10 @@ class UpdateDownloader:
             return
 
         try:
-            current = self.partition_module(self.partition_module.RUNNING)
-            current_label = current.info()[4]
-            next_label = "ota_0" if current_label == "ota_1" else "ota_1"
-            partitions = self.partition_module.find(
-                self.partition_module.TYPE_APP,
-                label=next_label
+            from mpos.partitions import get_next_update_partition
+            next_partition = get_next_update_partition(
+                partition_module=self.partition_module
             )
-            if not partitions:
-                raise Exception(f"Could not find partition: {next_label}")
-            next_partition = partitions[0]
             next_partition.set_boot()
             print("UpdateDownloader: Boot partition set, restarting...")
 
