@@ -617,3 +617,150 @@ class TestRedactUrlKwarg(unittest.TestCase):
 
         self.assertEqual(mock.call_history[-1]['redact_url'], True)
         self.assertEqual(mock.redact_url_received, True)
+
+
+class TestRedactedExceptionPath(unittest.TestCase):
+    """End-to-end verification of the URL-bearing exception scrubbing in
+    `_download_url_async`'s `except` handler.
+
+    Real-world trigger: aiohttp's `ClientConnectorError` (and friends) often
+    embed the full request URL in `str(e)`. Without scrubbing, the
+    `print(f"DownloadManager: Exception during download: {err_str}")` line
+    leaks the secret-bearing URL to the serial / REPL log on every failed
+    download attempt — exactly the case `redact_url=True` is meant to cover.
+
+    Strategy: install a fake `aiohttp` module into `sys.modules` so the
+    function-local `import aiohttp` inside `_download_url_async` resolves to
+    our fake. The fake's `ClientSession.get(...)` raises a `RuntimeError`
+    whose message contains the full URL — mimicking aiohttp's behaviour
+    closely enough to exercise the `if redact_url and url in err_str`
+    branch deterministically (no network required).
+    """
+
+    def _capture_download_with_failing_aiohttp(self, *, url, redact_url,
+                                                exc_message):
+        """Run `_download_url_async(url, redact_url=...)` against a fake
+        aiohttp that raises `RuntimeError(exc_message)` from `session.get()`.
+        Returns (captured_print_lines, raised_exception_or_None).
+        """
+        import asyncio
+        import sys
+        import builtins
+
+        # Minimal fake aiohttp surface — only what _download_url_async touches
+        # before it hits the failure point.
+        class _FakeClientSession:
+            def get(self, request_url, **kwargs):
+                # Raise synchronously from .get() — the `async with
+                # session.get(...) as response:` line will surface this as
+                # an exception inside the outer try/except.
+                raise RuntimeError(exc_message)
+
+            async def close(self):
+                pass
+
+        # MicroPython doesn't support `type(sys)(...)` to instantiate a
+        # fresh module object. The import machinery only checks
+        # `sys.modules` for the name and binds whatever object it finds —
+        # so a plain instance with the right attributes works just as
+        # well for `import aiohttp; aiohttp.ClientSession()`.
+        class _FakeAiohttp:
+            pass
+
+        fake_aiohttp = _FakeAiohttp()
+        fake_aiohttp.ClientSession = _FakeClientSession
+
+        # Capture print output without disturbing other tests' stdout.
+        captured = []
+        orig_print = builtins.print
+
+        def _fake_print(*args, **kwargs):
+            captured.append(" ".join(str(a) for a in args))
+
+        old_aiohttp = sys.modules.get("aiohttp")
+        sys.modules["aiohttp"] = fake_aiohttp
+        builtins.print = _fake_print
+        try:
+            async def _go():
+                await DownloadManager._download_url_async(
+                    url, redact_url=redact_url)
+
+            raised = None
+            try:
+                asyncio.run(_go())
+            except Exception as e:
+                raised = e
+        finally:
+            builtins.print = orig_print
+            if old_aiohttp is None:
+                # Don't leave a fake module behind that would mask real
+                # aiohttp imports in subsequent tests in the same run.
+                try:
+                    del sys.modules["aiohttp"]
+                except KeyError:
+                    pass
+            else:
+                sys.modules["aiohttp"] = old_aiohttp
+
+        return captured, raised
+
+    def test_redact_url_true_scrubs_url_from_exception_print_line(self):
+        # The motivating case: the URL embeds a secret (zpub / API key) in
+        # the path, the aiohttp error embeds that URL in its message, and
+        # the framework's except-handler print would leak it.
+        url = ("https://btc1.trezor.io/api/v2/xpub/"
+               "zpub6qSECRETxpubABCDEFG?details=txs&tokens=derived")
+        exc_message = "Cannot connect to host: {} — DNS failure".format(url)
+
+        captured, raised = self._capture_download_with_failing_aiohttp(
+            url=url, redact_url=True, exc_message=exc_message)
+
+        # The function must still re-raise (the framework's contract is
+        # that scrubbing only affects logs, not control flow).
+        self.assertIsNotNone(raised, "exception should still propagate")
+
+        # Find the exception-print line specifically.
+        exc_lines = [l for l in captured
+                     if "Exception during download:" in l]
+        self.assertTrue(exc_lines,
+                        "expected an 'Exception during download:' "
+                        "print line; got: {}".format(captured))
+
+        for line in exc_lines:
+            # The secret-bearing path component must NOT appear in the
+            # printed exception line.
+            self.assertFalse(
+                "zpub6qSECRETxpubABCDEFG" in line,
+                "secret-bearing URL substring leaked into exception "
+                "print: {}".format(line))
+            self.assertFalse(
+                url in line,
+                "full URL leaked into exception print: {}".format(line))
+            # The redacted form must appear (scheme + host preserved,
+            # path replaced with /...REDACTED...).
+            self.assertIn("https://btc1.trezor.io/...REDACTED...", line)
+
+    def test_redact_url_false_preserves_url_in_exception_print_line(self):
+        # Regression guard: default behaviour MUST keep the full URL in
+        # the exception print line so debugging public-URL downloads
+        # (app icons, OS updates, weather) isn't degraded.
+        url = "https://example.com/path/with/some/components"
+        exc_message = "Cannot connect to host: {}".format(url)
+
+        captured, raised = self._capture_download_with_failing_aiohttp(
+            url=url, redact_url=False, exc_message=exc_message)
+
+        self.assertIsNotNone(raised)
+
+        exc_lines = [l for l in captured
+                     if "Exception during download:" in l]
+        self.assertTrue(exc_lines)
+        self.assertTrue(
+            any(url in l for l in exc_lines),
+            "default behaviour should not scrub URL; "
+            "got lines: {}".format(exc_lines))
+        # And it must NOT redact when not asked to.
+        self.assertFalse(
+            any("...REDACTED..." in l for l in exc_lines),
+            "default behaviour should not insert REDACTED placeholder; "
+            "got lines: {}".format(exc_lines))
