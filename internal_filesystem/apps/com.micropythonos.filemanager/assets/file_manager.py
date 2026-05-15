@@ -1,5 +1,5 @@
 import lvgl as lv
-from mpos import Activity, Intent, sdcard, ui
+from mpos import Activity, Intent, print_event, sdcard, ui
 from action_activity import ActionActivity
 
 class FileManager(Activity):
@@ -29,31 +29,15 @@ class FileManager(Activity):
         sdcard.mount_with_optional_format('/sdcard')
 
     def file_explorer_event_cb(self, event):
+        print_event(event)
         event_code = event.get_code()
-        # Ignore:
-        # =======
-        # 2: PRESSING
-        # 19: HIT_TEST
-        # COVER_CHECK
-        # 24: REFR_EXT_DRAW_SIZE
-        # DRAW_MAIN
-        # DRAW_MAIN_BEGIN
-        # DRAW_MAIN_END
-        # DRAW_POST
-        # DRAW_POST_BEGIN
-        # DRAW_POST_END
-        # GET_SELF_SIZE
-        # 47 STYLE CHANGED
-        if event_code not in [2,19,23,24,25,26,27,28,29,30,31,32,33,47,49,52]:
-            name = ui.get_event_name(event_code)
-            print(f"file_explorer_event_cb {event_code} with name {name}")
-            if event_code == lv.EVENT.VALUE_CHANGED:
-                path = self.file_explorer.explorer_get_current_path()
-                clean_path = path[2:] if path[1] == ':' else path
-                file = self.file_explorer.explorer_get_selected_file_name()
-                fullpath = f"{clean_path}{file}"
-                print(f"Selected: {fullpath}")
-                self.startActivity(Intent(activity_class=ActionActivity).putExtra("path", fullpath))
+        if event_code == lv.EVENT.VALUE_CHANGED:
+            path = self.file_explorer.explorer_get_current_path()
+            clean_path = path[2:] if path[1] == ':' else path
+            file = self.file_explorer.explorer_get_selected_file_name()
+            fullpath = f"{clean_path}{file}"
+            print(f"Selected: {fullpath}")
+            self.startActivity(Intent(activity_class=ActionActivity).putExtra("path", fullpath))
 
     # Custom log callback to capture FPS
     def log_callback(self, level, log_str):
