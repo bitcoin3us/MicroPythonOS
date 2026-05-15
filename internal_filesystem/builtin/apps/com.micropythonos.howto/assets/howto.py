@@ -40,6 +40,7 @@ class HowTo(Activity):
 
         closebutton = lv.button(screen)
         closebutton.add_event_cb(lambda *args: self.finish(), lv.EVENT.CLICKED, None)
+        closebutton.add_event_cb(lambda *args: print("HowTo: long press detected"), lv.EVENT.LONG_PRESSED, None)
         closelabel = lv.label(closebutton)
         closelabel.set_text("Close")
 
