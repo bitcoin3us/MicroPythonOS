@@ -166,6 +166,7 @@ if [ "$target" == "esp32" -o "$target" == "esp32s3" -o "$target" == "unphone" -o
 	rm -rf lib/micropython/ports/esp32/build-$BOARD-$BOARD_VARIANT
 
 	# For more info on the options, see https://github.com/lvgl-micropython/lvgl_micropython
+	# --optimize-size: optimize for size
 	# --ota: support Over-The-Air updates
 	# --partition size: both OTA partitions are 4MB
 	# --flash-size: total flash size is 16MB
