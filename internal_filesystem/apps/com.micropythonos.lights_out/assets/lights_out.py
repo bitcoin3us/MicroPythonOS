@@ -145,12 +145,11 @@ class LightsOut(Activity):
             editor.commit()
 
     def _autosave(self):
-        if self.score > self.highscore:
-            editor = SharedPreferences(self.appFullName).edit()
-            editor.put_int("autosave_level", self.level)
-            editor.put_int("autosave_score", self.score)
-            editor.put_int("autosave_levels", self.total_levels)
-            editor.commit()
+        editor = SharedPreferences(self.appFullName).edit()
+        editor.put_int("autosave_level", self.level)
+        editor.put_int("autosave_score", self.score)
+        editor.put_int("autosave_levels", self.total_levels)
+        editor.commit()
 
     def _delete_autosave(self):
         editor = SharedPreferences(self.appFullName).edit()
@@ -301,8 +300,8 @@ class LightsOut(Activity):
 
     def _advance_level(self, timer):
         self._win_timer = None
-        self._autosave()
         self.level += 1
+        self._autosave()
         self._last_ts = time.ticks_ms()
         self.new_game()
         self.build_board()
@@ -327,6 +326,7 @@ class LightsOut(Activity):
         self.refresh_labels()
 
     def onDestroy(self, screen):
+        self._autosave()
         self._save_highscore()
         self._close_popup()
         if self._win_timer:

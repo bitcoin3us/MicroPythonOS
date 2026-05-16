@@ -177,12 +177,11 @@ class Memory(Activity):
             editor.commit()
 
     def _autosave(self):
-        if self.score > self.highscore:
-            editor = SharedPreferences(self.appFullName).edit()
-            editor.put_int("autosave_level", self.level)
-            editor.put_int("autosave_score", self.score)
-            editor.put_int("autosave_points", self.total_points)
-            editor.commit()
+        editor = SharedPreferences(self.appFullName).edit()
+        editor.put_int("autosave_level", self.level)
+        editor.put_int("autosave_score", self.score)
+        editor.put_int("autosave_points", self.total_points)
+        editor.commit()
 
     def _delete_autosave(self):
         editor = SharedPreferences(self.appFullName).edit()
@@ -348,8 +347,8 @@ class Memory(Activity):
 
     def _advance_level(self, timer):
         self._win_timer = None
-        self._autosave()
         self.level += 1
+        self._autosave()
         self._last_ts = time.ticks_ms()
         self.new_game()
         self.build_board()
@@ -409,6 +408,7 @@ class Memory(Activity):
         self.refresh_labels()
 
     def onDestroy(self, screen):
+        self._autosave()
         self._save_highscore()
         self._close_popup()
         if self._win_timer:
