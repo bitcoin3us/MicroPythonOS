@@ -65,7 +65,7 @@ class Main(Activity):
 
         # Top labels
         self.lbl_time = lv.label(self.screen)
-        self.lbl_time.set_style_text_font(lv.font_montserrat_34, 0)
+        self.lbl_time.set_style_text_font(lv.font_montserrat_28, 0)
         self.lbl_time.set_text("Startup...")
         self.lbl_time.align(lv.ALIGN.TOP_LEFT, 6, 22)
 
@@ -81,7 +81,7 @@ class Main(Activity):
         self.number = lv.textarea(self.screen)
         #self.number.set_accepted_chars("0123456789")
         self.number.set_one_line(True)
-        self.number.set_style_text_font(lv.font_montserrat_34, 0)
+        self.number.set_style_text_font(lv.font_montserrat_28, 0)
         self.number.align_to(self.lbl_date, lv.ALIGN.OUT_BOTTOM_LEFT, 0, 12)
 
         self.call = lv.button(self.screen)
