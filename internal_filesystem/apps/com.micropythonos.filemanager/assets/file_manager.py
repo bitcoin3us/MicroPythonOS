@@ -12,17 +12,14 @@ class FileManager(Activity):
         #lv.log_register_print_cb(self.log_callback)
         screen = lv.obj()
         self.file_explorer = lv.file_explorer(screen)
-        #self.file_explorer.set_root_path("M:data/images/")
         self.file_explorer.explorer_open_dir('M:/')
-        #file_explorer.explorer_open_dir('S:/')
-        #self.file_explorer.set_size(lv.pct(100), lv.pct(100))
-        #file_explorer.set_mode(lv.FILE_EXPLORER.MODE.DEFAULT)  # Default browsing mode
-        #file_explorer.set_sort(lv.FILE_EXPLORER.SORT.NAME_ASC)  # Sort by name, ascending
         self.file_explorer.align(lv.ALIGN.CENTER, 0, 0)
-        # Attach event callback
         self.file_explorer.add_event_cb(self.file_explorer_event_cb, lv.EVENT.ALL, None)
         self.file_explorer.explorer_set_quick_access_path(lv.EXPLORER.HOME_DIR, "M:/home/user/")
         self.file_explorer.explorer_set_quick_access_path(lv.EXPLORER.PICTURES_DIR, "M:/data/images/")
+
+        file_table = self.file_explorer.explorer_get_file_table()
+        file_table.add_event_cb(lambda e: print("FileManager: long press detected"), lv.EVENT.LONG_PRESSED, None)
         self.setContentView(screen)
 
     def onResume(self, screen):
