@@ -1,6 +1,6 @@
 import os
 import lvgl as lv
-from mpos import Activity, print_event, sdcard
+from mpos import Activity, InputManager, print_event, sdcard
 
 
 class FileManager(Activity):
@@ -108,6 +108,13 @@ class FileManager(Activity):
         cancel_btn = lv.button(bar)
         lv.label(cancel_btn).set_text("Cancel")
         cancel_btn.add_event_cb(lambda e: self._dismiss_action_bar(), lv.EVENT.CLICKED, None)
+
+        group = lv.group_get_default()
+        if group:
+            group.add_obj(delete_btn)
+            group.add_obj(rename_btn)
+            group.add_obj(cancel_btn)
+            InputManager.emulate_focus_obj(group, cancel_btn)
 
         self._action_bar = bar
 
