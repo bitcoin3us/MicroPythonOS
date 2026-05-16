@@ -10,6 +10,7 @@ class FileManager(Activity):
     _current_path = None
     _list = None
     _path_label = None
+    _suppress_btn = None
 
     def onCreate(self):
         sdcard.mount_with_optional_format("/sdcard")
@@ -64,18 +65,25 @@ class FileManager(Activity):
         for d in dirs:
             fullpath = path + d + "/"
             btn = self._list.add_button(None, lv.SYMBOL.DIRECTORY + "  " + d)
-            btn.add_event_cb(lambda e, p=fullpath: self._populate_dir(p), lv.EVENT.CLICKED, None)
-            btn.add_event_cb(lambda e, p=fullpath: self._on_list_long_press(p), lv.EVENT.LONG_PRESSED, None)
+            btn.add_event_cb(lambda e, p=fullpath: self._on_dir_click(e, p), lv.EVENT.CLICKED, None)
+            btn.add_event_cb(lambda e, p=fullpath: self._on_any_long_press(e, p), lv.EVENT.LONG_PRESSED, None)
 
         for f in files:
             fullpath = path + f
             btn = self._list.add_button(None, lv.SYMBOL.FILE + "  " + f)
-            btn.add_event_cb(lambda e, p=fullpath: self._on_list_long_press(p), lv.EVENT.LONG_PRESSED, None)
+            btn.add_event_cb(lambda e, p=fullpath: self._on_any_long_press(e, p), lv.EVENT.LONG_PRESSED, None)
 
-    def _on_list_long_press(self, path):
-        print(f"FileManager: long press on {path}")
+    def _on_any_long_press(self, e, path):
+        self._suppress_btn = e.get_current_target()
         self._selected_path = path
         self._show_action_bar()
+        print(f"FileManager: long press on {path}")
+
+    def _on_dir_click(self, e, path):
+        if e.get_current_target() == self._suppress_btn:
+            self._suppress_btn = None
+            return
+        self._populate_dir(path)
 
     def _show_action_bar(self):
         self._dismiss_action_bar()
