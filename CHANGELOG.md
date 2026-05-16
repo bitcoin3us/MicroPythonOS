@@ -7,10 +7,8 @@ Builtin Apps:
 - About: show correct next update partition instead of always using get_next_update()
 - OSUpdate: restrict OTA update target to ota_0/ota_1 instead of all ota_N partitions (via shared partition helper)
 
-Framework:
-- Add mpos.partitions.get_next_update_partition() helper that alternates between ota_0 and ota_1 only
-
 Frameworks:
+- Add mpos.partitions.get_next_update_partition() helper that alternates between ota_0 and ota_1 only
 - SettingActivity: support slider UI for integer settings
 
 Board Support:
@@ -18,6 +16,7 @@ Board Support:
 
 OS:
 - Disable the repl on hardware uart for esp32s3 targets (USB serial still works)
+- Remove big, rarely used font Montserrat 34, 40 and 48 to reduce build size by 218KiB - apps can still upscale or load fonts at runtime
 
 0.9.5
 =====
