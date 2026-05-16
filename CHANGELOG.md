@@ -4,8 +4,8 @@ Future release (next version)
 Add changes that have been made to the code but haven't made it into a release here.
 
 Builtin Apps:
-- OSUpdate: restrict OTA update target to ota_0/ota_1 instead of all ota_N partitions (via shared partition helper)
 - About: show correct next update partition instead of always using get_next_update()
+- OSUpdate: restrict OTA update target to ota_0/ota_1 instead of all ota_N partitions (via shared partition helper)
 
 Framework:
 - Add mpos.partitions.get_next_update_partition() helper that alternates between ota_0 and ota_1 only
