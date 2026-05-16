@@ -21,6 +21,9 @@ OS:
 Frameworks:
 - `DownloadManager.download_url`: add `redact_url=True` kwarg for callers fetching URLs that embed an auth secret (API key, OAuth token, LNBits readkey, xpub/ypub/zpub). When set, the URL is logged as `scheme://host/...REDACTED...`, the response-headers dump is suppressed, and exception messages have any embedded URL scrubbed. Default `False` preserves existing debug output for callers fetching public URLs (app icons, OS updates, etc.). Use case: prevents serial / REPL logs from leaking the secret-bearing URL even when DEBUG-level chatter is on.
 
+Frameworks:
+- SettingsActivity / SettingActivity: when a setting has `ui_options` (a list of `(label, value)` tuples used by `ui: "radiobuttons"` or `"dropdown"`), the row's value label now shows the human-readable label instead of the raw pref value — both on initial render and after a save. Previously a radiobuttons setting like `[("Lightning Piggy", "lightningpiggy"), ...]` would show "lightningpiggy" in the row beneath the title; now it shows "Lightning Piggy". Stored values not present in the current `ui_options` list pass through unchanged so stale prefs stay visible rather than collapsing to "(not set)".
+
 0.9.5
 =====
 

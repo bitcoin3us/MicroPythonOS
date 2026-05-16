@@ -4,6 +4,26 @@ from ..app.activity import Activity
 from .setting_activity import SettingActivity
 import mpos.ui
 
+
+def _value_label_for(setting, stored_value):
+    """Map a stored pref value to its human-readable display label using
+    the setting's `ui_options` list (a list of (label, value) tuples).
+    Returns the matching label if one is found, otherwise the raw value
+    unchanged.
+
+    Without this, settings with `ui_options` (radiobuttons, dropdown)
+    show the raw pref value in the row's value label — e.g.
+    "lightningpiggy" instead of "Lightning Piggy". The matching label
+    only exists in the picker activity itself, never on the list view.
+    """
+    ui_options = setting.get("ui_options")
+    if ui_options:
+        for label, value in ui_options:
+            if value == stored_value:
+                return label
+    return stored_value
+
+
 # Used to list and edit all settings:
 class SettingsActivity(Activity):
 
@@ -72,11 +92,15 @@ class SettingsActivity(Activity):
                 if stored_value is None:
                     default_value = setting.get("default_value")
                     if default_value is not None:
-                        value_text = f"(defaults to {default_value})"
+                        # Map default to its human-readable label too, when one exists.
+                        value_text = f"(defaults to {_value_label_for(setting, default_value)})"
                     else:
                         value_text = "(not set)"
                 else:
-                    value_text = stored_value
+                    # Map stored value to its ui_options label when present
+                    # (e.g. "lightningpiggy" → "Lightning Piggy"). No-op when
+                    # no ui_options or the value isn't in the list.
+                    value_text = _value_label_for(setting, stored_value)
             value.set_text(value_text)
             value.set_style_text_font(lv.font_montserrat_12, lv.PART.MAIN)
             value.set_style_text_color(lv.color_hex(0x666666), lv.PART.MAIN)
