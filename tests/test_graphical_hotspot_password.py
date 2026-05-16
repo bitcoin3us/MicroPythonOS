@@ -91,7 +91,7 @@ class TestGraphicalHotspotPassword(unittest.TestCase):
         print(f"Auth Mode value text: {value_text}")
         self.assertEqual(
             value_text,
-            "(defaults to none)",
+            "(defaults to None)",
             "Auth Mode value text did not match expected default",
         )
 
@@ -283,8 +283,8 @@ class TestGraphicalHotspotPassword(unittest.TestCase):
         print(f"Auth Mode value text after save: {value_text}")
         self.assertEqual(
             value_text,
-            "wpa2",
-            "Auth Mode value did not update to wpa2",
+            "WPA2",
+            "Auth Mode value did not update to WPA2",
         )
 
         print("\n=== Hotspot settings Auth Mode dropdown test completed ===")
