@@ -18,6 +18,9 @@ OS:
 - Disable the repl on hardware uart for esp32s3 targets (USB serial still works)
 - Remove big, rarely used font Montserrat 34, 40 and 48 to reduce build size by 218KiB - apps can still upscale or load fonts at runtime
 
+Frameworks:
+- `DownloadManager.download_url`: add `redact_url=True` kwarg for callers fetching URLs that embed an auth secret (API key, OAuth token, LNBits readkey, xpub/ypub/zpub). When set, the URL is logged as `scheme://host/...REDACTED...`, the response-headers dump is suppressed, and exception messages have any embedded URL scrubbed. Default `False` preserves existing debug output for callers fetching public URLs (app icons, OS updates, etc.). Use case: prevents serial / REPL logs from leaking the secret-bearing URL even when DEBUG-level chatter is on.
+
 0.9.5
 =====
 

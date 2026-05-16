@@ -28,12 +28,12 @@ class DownloadManager:
     @classmethod
     def download_url(cls, url, outfile=None, total_size=None,
                     progress_callback=None, chunk_callback=None, headers=None,
-                    speed_callback=None):
+                    speed_callback=None, redact_url=False):
         """Download a URL with flexible output modes (sync or async wrapper).
-        
+
         This method automatically detects whether it's being called from an async context
         and either returns a coroutine (for await) or runs synchronously.
-        
+
         Args:
             url (str): URL to download (required)
             outfile (str, optional): Path to write file. If None, returns bytes.
@@ -42,12 +42,21 @@ class DownloadManager:
             chunk_callback (coroutine, optional): async def callback(chunk: bytes)
             headers (dict, optional): HTTP headers (e.g., {'Range': 'bytes=1000-'})
             speed_callback (coroutine, optional): async def callback(bytes_per_second: float)
-        
+            redact_url (bool, optional): Opt in to redacting the URL in log
+                output and the response-headers dump. Set True whenever the
+                URL embeds an auth secret in its path or query string —
+                e.g. an API key, an OAuth token, an LNBits readkey, or an
+                xpub/ypub/zpub (which exposes the wallet's whole derivation
+                tree). Only the `scheme://host[:port]` prefix is kept in
+                logs; path + query are replaced with "/...REDACTED...".
+                Defaults to False to preserve current debug output for
+                callers fetching public URLs (app icons, OS updates, etc.).
+
         Returns:
             bytes: Downloaded content (if outfile and chunk_callback are None)
             bool: True if successful (when using outfile or chunk_callback)
             coroutine: If called from async context, returns awaitable
-        
+
         Raises:
             ValueError: If both outfile and chunk_callback are provided
         """
@@ -59,20 +68,44 @@ class DownloadManager:
                 # We're in an async context, return the coroutine
                 return cls._download_url_async(url, outfile, total_size,
                                               progress_callback, chunk_callback, headers,
-                                              speed_callback)
+                                              speed_callback, redact_url)
             except RuntimeError:
                 # No running event loop, run synchronously
                 return asyncio.run(cls._download_url_async(url, outfile, total_size,
                                                           progress_callback, chunk_callback, headers,
-                                                          speed_callback))
+                                                          speed_callback, redact_url))
         except ImportError:
             # asyncio not available, shouldn't happen but handle gracefully
             raise ImportError("asyncio module not available")
-    
+
+    @staticmethod
+    def _safe_url(url):
+        """Return a log-safe rendering of `url` for use when the original URL
+        carries a secret in its path or query string. Strips everything
+        after `scheme://host[:port]` and replaces it with "/...REDACTED...".
+
+        Examples:
+            https://example.com/api/v2/xpub/zpub6q...  -> https://example.com/...REDACTED...
+            https://api.example.com:8080/p?key=abc     -> https://api.example.com:8080/...REDACTED...
+            https://example.com                        -> https://example.com  (no path to redact)
+            not-a-url                                  -> ...REDACTED...
+        """
+        try:
+            scheme_end = url.find("://")
+            if scheme_end < 0:
+                return "...REDACTED..."
+            path_start = url.find("/", scheme_end + 3)
+            if path_start < 0:
+                # No path component — nothing sensitive to strip.
+                return url
+            return url[:path_start] + "/...REDACTED..."
+        except Exception:
+            return "...REDACTED..."
+
     @classmethod
     async def _download_url_async(cls, url, outfile=None, total_size=None,
                                  progress_callback=None, chunk_callback=None, headers=None,
-                                 speed_callback=None):
+                                 speed_callback=None, redact_url=False):
         """Download a URL with flexible output modes.
         
         Args:
@@ -83,11 +116,14 @@ class DownloadManager:
             chunk_callback (coroutine, optional): async def callback(chunk: bytes)
             headers (dict, optional): HTTP headers (e.g., {'Range': 'bytes=1000-'})
             speed_callback (coroutine, optional): async def callback(bytes_per_second: float)
-        
+            redact_url (bool, optional): When True, log a redacted URL
+                (scheme://host only) and suppress the response-headers dump.
+                See `download_url` for details and use cases.
+
         Returns:
             bytes: Downloaded content (if outfile and chunk_callback are None)
             bool: True if successful (when using outfile or chunk_callback)
-        
+
         Raises:
             ValueError: If both outfile and chunk_callback are provided
         """
@@ -98,6 +134,11 @@ class DownloadManager:
                 "Use outfile for saving to disk, or chunk_callback for streaming."
             )
 
+        # Compute the log-safe rendering once; used for every URL-bearing print
+        # below. When redact_url is False this is just the original URL, so
+        # existing behaviour is preserved verbatim.
+        log_url = cls._safe_url(url) if redact_url else url
+
         import aiohttp
         session = aiohttp.ClientSession()
         sslctx = None # for http
@@ -106,7 +147,7 @@ class DownloadManager:
             sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             sslctx.verify_mode = ssl.CERT_OPTIONAL # CERT_REQUIRED might fail because MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED
 
-        print(f"DownloadManager: Downloading {url}")
+        print(f"DownloadManager: Downloading {log_url}")
         
         fd = None
         try:
@@ -120,7 +161,13 @@ class DownloadManager:
                     raise RuntimeError(f"HTTP {response.status}")
                 
                 # Figure out total size and starting offset (for resume support)
-                print("DownloadManager: Response headers:", response.headers)
+                # When redacting, suppress the headers dump entirely — response
+                # headers can include `set-cookie`, `cf-ray` and other tokens
+                # that correlate to the request's secret-bearing URL.
+                if redact_url:
+                    print("DownloadManager: Response headers: <redacted>")
+                else:
+                    print("DownloadManager: Response headers:", response.headers)
                 resume_offset = 0  # Starting byte offset (0 for new downloads, >0 for resumed)
                 
                 if total_size is None:
@@ -241,7 +288,7 @@ class DownloadManager:
                                 speed_last_update_time = current_time
                     else:
                         # Chunk is None, download complete
-                        print(f"DownloadManager: Finished downloading {url}")
+                        print(f"DownloadManager: Finished downloading {log_url}")
                         if fd:
                             fd.close()
                             fd = None
@@ -252,7 +299,12 @@ class DownloadManager:
                             return b''.join(chunks)
         
         except Exception as e:
-            print(f"DownloadManager: Exception during download: {e}")
+            # Exception strings from aiohttp often embed the full URL —
+            # scrub it before printing when the caller asked for redaction.
+            err_str = str(e)
+            if redact_url and url in err_str:
+                err_str = err_str.replace(url, log_url)
+            print(f"DownloadManager: Exception during download: {err_str}")
             if fd:
                 fd.close()
             raise  # Re-raise the exception instead of suppressing it
