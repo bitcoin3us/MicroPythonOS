@@ -3,26 +3,25 @@ Future release (next version)
 
 Add changes that have been made to the code but haven't made it into a release here.
 
+0.9.6
+=====
+
 Builtin Apps:
 - About: show correct next update partition instead of always using get_next_update()
-- OSUpdate: restrict OTA update target to ota_0/ota_1 instead of all ota_N partitions (via shared partition helper)
+- OSUpdate: restrict OTA update flip-flop target to ota_0/ota_1 instead of all ota_N partitions (via shared partition helper)
 
 Frameworks:
 - Add mpos.partitions.get_next_update_partition() helper that alternates between ota_0 and ota_1 only
+- DownloadManager: add "redact" argument to replace sensitive info with REDACTED in log output
 - SettingActivity: support slider UI for integer settings
+- SettingActivity: show human-readable value instead of internally used option
 
 Board Support:
 - Fri3d 2026: access expander.analog as property instead of function
 
 OS:
 - Disable the repl on hardware uart for esp32s3 targets (USB serial still works)
-- Remove big, rarely used font Montserrat 34, 40 and 48 to reduce build size by 218KiB - apps can still upscale or load fonts at runtime
-
-Frameworks:
-- `DownloadManager.download_url`: add `redact_url=True` kwarg for callers fetching URLs that embed an auth secret (API key, OAuth token, LNBits readkey, xpub/ypub/zpub). When set, the URL is logged as `scheme://host/...REDACTED...`, the response-headers dump is suppressed, and exception messages have any embedded URL scrubbed. Default `False` preserves existing debug output for callers fetching public URLs (app icons, OS updates, etc.). Use case: prevents serial / REPL logs from leaking the secret-bearing URL even when DEBUG-level chatter is on.
-
-Frameworks:
-- SettingsActivity / SettingActivity: when a setting has `ui_options` (a list of `(label, value)` tuples used by `ui: "radiobuttons"` or `"dropdown"`), the row's value label now shows the human-readable label instead of the raw pref value — both on initial render and after a save. Previously a radiobuttons setting like `[("Lightning Piggy", "lightningpiggy"), ...]` would show "lightningpiggy" in the row beneath the title; now it shows "Lightning Piggy". Stored values not present in the current `ui_options` list pass through unchanged so stale prefs stay visible rather than collapsing to "(not set)".
+- Remove big, rarely used font Montserrat 34, 40 and 48 to reduce build size by 218KiB, while apps can still upscale or load fonts at runtime
 
 0.9.5
 =====
