@@ -11,7 +11,7 @@
 "activities": [
     {
       "entrypoint": "assets/file_manager.py",
-      "classname": "File Manager",
+      "classname": "FileManager",
       "intent_filters": [
         {
           "action": "main",
