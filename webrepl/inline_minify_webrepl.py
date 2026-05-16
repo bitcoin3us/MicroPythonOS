@@ -153,8 +153,9 @@ def inline_assets() -> None:
             )
         html = new_html
 
-    with gzip.open(out_path, "wt", encoding="utf-8") as gzip_file:
-        gzip_file.write(html)
+    with open(out_path, "wb") as f:
+        with gzip.GzipFile(fileobj=f, mode="w", compresslevel=9, mtime=0) as gz:
+            gz.write(html.encode("utf-8"))
 
 
 if __name__ == "__main__":
