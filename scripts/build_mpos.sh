@@ -156,6 +156,17 @@ else
 	echo "No need to add adc_mic to $idfile"
 fi
 
+echo "Check need to add esp_new_jpeg to $idfile"
+if ! grep esp_new_jpeg "$idfile"; then
+	echo "Adding esp_new_jpeg to $idfile"
+        echo '  espressif/esp_new_jpeg:
+    rules:
+      - if: "target in [esp32, esp32s2, esp32s3, esp32p4]"
+    version: "*"' >> "$idfile"
+else
+	echo "No need to add esp_new_jpeg to $idfile"
+fi
+
 echo "Resulting $idfile file:"
 cat "$idfile"
 
