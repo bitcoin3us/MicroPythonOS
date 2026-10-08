@@ -9,11 +9,25 @@ changes) until qrdecode.release(), so these tests also check that frame size
 changes, errors and release() leave it in a usable state.
 """
 
+import gc
 import unittest
 
 import qrdecode
 
 FIXTURES = "../tests/qrdecode"
+
+# ESP-IDF heap capability bits (esp_heap_caps.h)
+_MALLOC_CAP_8BIT = 1 << 2
+_MALLOC_CAP_SPIRAM = 1 << 10
+_MALLOC_CAP_INTERNAL = 1 << 11
+
+try:
+    import esp32
+
+    _HAS_PSRAM = bool(esp32.idf_heap_info(_MALLOC_CAP_SPIRAM))
+except ImportError:
+    esp32 = None
+    _HAS_PSRAM = False
 
 V2_PAYLOAD = b"https://micropythonos.com"
 V1_PAYLOAD = b"MicroPythonOS"
@@ -27,6 +41,18 @@ def _read_pgm(name):
     if magic != b"P5" or maxval != b"255" or len(pixels) != width * height:
         raise ValueError("unexpected PGM header in " + name)
     return pixels, width, height
+
+
+# test_runner.py --ondevice doesn't copy tests/qrdecode to the device. The fixture
+# tests are skipped with a decorator, not from setUp: the device's unittest
+# doesn't catch a SkipTest raised in setUp, and it would end the whole run.
+try:
+    _V2 = _read_pgm("v2_url_120x120.pgm")
+    _V1 = _read_pgm("v1_text_96x80.pgm")
+    _HAS_FIXTURES = True
+except OSError:
+    _HAS_FIXTURES = False
+_NO_FIXTURES = "fixtures in " + FIXTURES + " are not available"
 
 
 def _no_code_frame(width, height):
@@ -55,35 +81,31 @@ class TestQRDecode(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # test_runner.py --ondevice doesn't copy tests/qrdecode to the device.
-        cls.fixtures_missing = False
-        try:
-            cls.v2, cls.v2_w, cls.v2_h = _read_pgm("v2_url_120x120.pgm")
-            cls.v1, cls.v1_w, cls.v1_h = _read_pgm("v1_text_96x80.pgm")
-        except OSError:
-            cls.fixtures_missing = True
-
-    def setUp(self):
-        if self.fixtures_missing:
-            self.skipTest("fixtures in " + FIXTURES + " are not available")
+        if _HAS_FIXTURES:
+            cls.v2, cls.v2_w, cls.v2_h = _V2
+            cls.v1, cls.v1_w, cls.v1_h = _V1
 
     @classmethod
     def tearDownClass(cls):
         # Don't leave the decoder allocated for the tests that run after these.
         qrdecode.release()
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_decodes_square_finder_code(self):
         self.assertEqual(qrdecode.qrdecode(self.v2, self.v2_w, self.v2_h), V2_PAYLOAD)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_decodes_non_square_frame(self):
         self.assertEqual((self.v1_w, self.v1_h), (96, 80))
         self.assertEqual(qrdecode.qrdecode(self.v1, self.v1_w, self.v1_h), V1_PAYLOAD)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_decodes_memoryview(self):
         # The camera hands its frame buffer over as a memoryview.
         frame = memoryview(bytearray(self.v2))
         self.assertEqual(qrdecode.qrdecode(frame, self.v2_w, self.v2_h), V2_PAYLOAD)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_decodes_offset_slice_without_touching_neighbours(self):
         padded = bytearray(b"\x00" * 3) + bytearray(self.v2) + bytearray(b"\xff" * 5)
         before = bytes(padded)
@@ -91,14 +113,17 @@ class TestQRDecode(unittest.TestCase):
         self.assertEqual(qrdecode.qrdecode(frame, self.v2_w, self.v2_h), V2_PAYLOAD)
         self.assertEqual(bytes(padded), before)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_no_code_raises_value_error(self):
         with self.assertRaises(ValueError):
             qrdecode.qrdecode(_no_code_frame(64, 48), 64, 48)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_unreadable_code_raises_type_error(self):
         with self.assertRaises(TypeError):
             qrdecode.qrdecode(_unreadable_frame(self.v2, self.v2_w), self.v2_w, self.v2_h)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_frame_size_changes_between_calls(self):
         no_code = _no_code_frame(64, 48)
         for _ in range(2):
@@ -108,6 +133,7 @@ class TestQRDecode(unittest.TestCase):
                 qrdecode.qrdecode(no_code, 64, 48)
         self.assertEqual(qrdecode.qrdecode(self.v1, self.v1_w, self.v1_h), V1_PAYLOAD)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_input_buffer_is_not_modified(self):
         for frame, w, h in (
             (bytearray(self.v2), self.v2_w, self.v2_h),
@@ -121,6 +147,7 @@ class TestQRDecode(unittest.TestCase):
                 pass
             self.assertEqual(bytes(frame), before)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_bad_arguments_leave_decoder_usable(self):
         self.assertEqual(qrdecode.qrdecode(self.v2, self.v2_w, self.v2_h), V2_PAYLOAD)
         with self.assertRaises(ValueError):
@@ -131,6 +158,7 @@ class TestQRDecode(unittest.TestCase):
             qrdecode.qrdecode_rgb565(self.v2, self.v2_w, self.v2_h)
         self.assertEqual(qrdecode.qrdecode(self.v2, self.v2_w, self.v2_h), V2_PAYLOAD)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_release_frees_decoder_and_next_call_reallocates(self):
         qrdecode.release()
         qrdecode.release()
@@ -140,6 +168,7 @@ class TestQRDecode(unittest.TestCase):
         qrdecode.release()
         qrdecode.release()
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_rgb565_decodes_same_payload(self):
         frame = _to_rgb565(self.v2)
         before = bytes(frame)
@@ -147,6 +176,7 @@ class TestQRDecode(unittest.TestCase):
         self.assertEqual(bytes(frame), before)
         self.assertEqual(qrdecode.qrdecode_rgb565(_to_rgb565(self.v1), self.v1_w, self.v1_h), V1_PAYLOAD)
 
+    @unittest.skipUnless(_HAS_FIXTURES, _NO_FIXTURES)
     def test_rgb565_errors_are_caught_by_the_caller(self):
         # The exception must reach this frame's except clause, not one further out.
         caught = []
@@ -160,6 +190,44 @@ class TestQRDecode(unittest.TestCase):
             caught.append("TypeError")
         self.assertEqual(caught, ["ValueError", "TypeError"])
         self.assertEqual(qrdecode.qrdecode_rgb565(_to_rgb565(self.v2), self.v2_w, self.v2_h), V2_PAYLOAD)
+
+
+class TestQRDecodeMemory(unittest.TestCase):
+    """The decoder kept between frames lives in PSRAM, not in internal RAM.
+
+    Internal RAM is scarce and shared with the display's DMA buffers and the
+    camera driver, and the decoder is kept for as long as QR scanning is on.
+    ESP32 with PSRAM only; skipped elsewhere.
+    """
+
+    def tearDown(self):
+        qrdecode.release()
+
+    def _free(self, caps):
+        return sum(region[1] for region in esp32.idf_heap_info(caps))
+
+    @unittest.skipUnless(_HAS_PSRAM, "needs an ESP32 with PSRAM")
+    def test_kept_decoder_holds_no_internal_ram(self):
+        width = height = 640  # the camera's QR mode
+        frame = bytearray(width * height)
+        internal = _MALLOC_CAP_8BIT | _MALLOC_CAP_INTERNAL
+        held = []
+        # Other tasks can allocate internal RAM at the same time, so take the smallest of three.
+        for _ in range(3):
+            qrdecode.release()
+            gc.collect()
+            internal_before = self._free(internal)
+            spiram_before = self._free(_MALLOC_CAP_SPIRAM)
+            with self.assertRaises(ValueError):
+                qrdecode.qrdecode(frame, width, height)
+            gc.collect()
+            held.append((internal_before - self._free(internal), spiram_before - self._free(_MALLOC_CAP_SPIRAM)))
+        internal_held = min(h[0] for h in held)
+        spiram_held = min(h[1] for h in held)
+        # The decoder is still allocated: its image buffer alone is width * height bytes
+        self.assertTrue(spiram_held >= width * height, "decoder holds %d bytes of PSRAM" % spiram_held)
+        # quirc's flood-fill stack alone would be 6,816 bytes at this height
+        self.assertTrue(internal_held < 2048, "decoder holds %d bytes of internal RAM" % internal_held)
 
 
 if __name__ == "__main__":

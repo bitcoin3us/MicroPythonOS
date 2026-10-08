@@ -113,7 +113,7 @@ int quirc_resize(struct quirc *q, int w, int h)
 	if (vars_byte_size / sizeof(*vars) != num_vars) {
 		goto fail; /* size_t overflow */
 	}
-	vars = malloc(vars_byte_size);
+	vars = ps_malloc(vars_byte_size);
 	if (!vars)
 		goto fail;
 

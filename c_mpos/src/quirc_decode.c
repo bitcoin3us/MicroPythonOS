@@ -37,18 +37,19 @@ struct qrdecode_state {
 
 static struct qrdecode_state *qrdecode_state;
 
-// Where the decoder is allocated, in one place so it can be moved once it has been
-// measured on a device. For now it stays where it was when it was allocated for
-// every frame: struct quirc comes from quirc_new(), which uses ps_malloc() from
-// quirc_internal.h like the frame-sized buffers, and the code and data structs come
-// from malloc(). All of it is freed with free(), here or in quirc_destroy(); on
-// ESP-IDF, free() also releases memory from heap_caps_malloc().
+// Where the decoder is allocated, in one place. It is kept for as long as QR
+// scanning is on, so all of it comes from ps_malloc() (quirc_internal.h), which
+// prefers PSRAM and leaves the scarce internal RAM to the display and camera DMA
+// buffers: struct quirc, its frame-sized buffer and its flood-fill stack from
+// quirc_new() and quirc_resize(), and the code and data structs from here. All of
+// it is freed with free(), here or in quirc_destroy(); on ESP-IDF, free() also
+// releases memory from heap_caps_malloc().
 static struct quirc *qrdecode_new_quirc(void) {
     return quirc_new();
 }
 
 static struct qrdecode_state *qrdecode_new_state(void) {
-    return malloc(sizeof(struct qrdecode_state));
+    return ps_malloc(sizeof(struct qrdecode_state));
 }
 
 // Returns the decoder, sized for width x height. Raises OSError(ENOMEM) when it
