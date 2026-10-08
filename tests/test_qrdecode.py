@@ -192,6 +192,34 @@ class TestQRDecode(unittest.TestCase):
         self.assertEqual(qrdecode.qrdecode_rgb565(_to_rgb565(self.v2), self.v2_w, self.v2_h), V2_PAYLOAD)
 
 
+class TestQRDecodeFrameSize(unittest.TestCase):
+    """Frame sizes whose pixel count overflows are rejected before anything is allocated.
+
+    With 32-bit arithmetic (ESP32), 65536 x 65537 wraps around to 65536 pixels:
+    it used to pass the buffer size check and get a 64 KB buffer for 65537 rows.
+    """
+
+    def tearDown(self):
+        qrdecode.release()
+
+    def _value_error(self, func, *args):
+        try:
+            func(*args)
+        except ValueError as e:
+            return str(e)
+        self.fail("no ValueError")
+
+    def test_overflowing_size_raises_value_error(self):
+        self.assertEqual(self._value_error(qrdecode.qrdecode, bytearray(65536), 65536, 65537), "frame too large")
+
+    def test_overflowing_rgb565_size_raises_value_error(self):
+        self.assertEqual(self._value_error(qrdecode.qrdecode_rgb565, bytearray(131072), 65536, 65537), "frame too large")
+
+    def test_decoder_still_works_after_rejected_size(self):
+        self._value_error(qrdecode.qrdecode, bytearray(65536), 65536, 65537)
+        self.assertEqual(self._value_error(qrdecode.qrdecode, _no_code_frame(64, 48), 64, 48), "no QR code found")
+
+
 class TestQRDecodeMemory(unittest.TestCase):
     """The decoder kept between frames lives in PSRAM, not in internal RAM.
 

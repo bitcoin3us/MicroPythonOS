@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,6 +108,19 @@ static mp_obj_t qrdecode_result(struct qrdecode_state *state) {
     return mp_obj_new_bytes((const uint8_t *)state->data.payload, state->data.payload_len);
 }
 
+// Raises ValueError unless quirc can take a width x height frame: quirc counts
+// pixels in an int, and an RGB565 frame is twice that many bytes. A product that
+// wrapped around would pass the buffer size check and size quirc's buffers too
+// small for the rows it then scans.
+static void qrdecode_check_size(mp_int_t width, mp_int_t height) {
+    if (width <= 0 || height <= 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("width and height must be positive"));
+    }
+    if (width > INT_MAX / 2 / height) {
+        mp_raise_ValueError(MP_ERROR_TEXT("frame too large"));
+    }
+}
+
 static mp_obj_t qrdecode(mp_uint_t n_args, const mp_obj_t *args) {
     //QRDECODE_DEBUG_PRINT("qrdecode: Starting\n");
     //QRDECODE_DEBUG_PRINT("qrdecode: Stack high-water mark: %u bytes\n", uxTaskGetStackHighWaterMark(NULL));
@@ -122,9 +136,7 @@ static mp_obj_t qrdecode(mp_uint_t n_args, const mp_obj_t *args) {
     mp_int_t height = mp_obj_get_int(args[2]);
     //QRDECODE_DEBUG_PRINT("qrdecode: Width=%u, Height=%u\n", width, height);
 
-    if (width <= 0 || height <= 0) {
-        mp_raise_ValueError(MP_ERROR_TEXT("width and height must be positive"));
-    }
+    qrdecode_check_size(width, height);
     if (bufinfo.len != (size_t)(width * height)) {
         QRDECODE_DEBUG_PRINT("qrdecode wrong bufsize: %u bytes\n", bufinfo.len);
         mp_raise_ValueError(MP_ERROR_TEXT("buffer size must match width * height"));
@@ -154,9 +166,7 @@ static mp_obj_t qrdecode_rgb565(mp_uint_t n_args, const mp_obj_t *args) {
     mp_int_t height = mp_obj_get_int(args[2]);
     //QRDECODE_DEBUG_PRINT("qrdecode_rgb565: Width=%u, Height=%u\n", width, height);
 
-    if (width <= 0 || height <= 0) {
-        mp_raise_ValueError(MP_ERROR_TEXT("width and height must be positive"));
-    }
+    qrdecode_check_size(width, height);
     if (bufinfo.len != (size_t)(width * height * 2)) {
         QRDECODE_DEBUG_PRINT("qrdecode_rgb565 wrong bufsize: %u bytes\n", bufinfo.len);
         mp_raise_ValueError(MP_ERROR_TEXT("buffer size must match width * height * 2 for RGB565"));
