@@ -5,8 +5,9 @@ qrdecode keeps its decoder (about 400 KB at 640x640) between calls, so live
 scanning doesn't allocate and free it for every frame. The Camera activity
 must call qrdecode.release() when QR scanning stops and when it is paused.
 
-CameraActivity.onCreate builds the UI without touching camera hardware, and a
-fake qrdecode module in sys.modules counts the release() calls.
+CameraActivity.onCreate builds the UI and, through setContentView and
+onResume, starts the camera when the board has one. A fake qrdecode module in
+sys.modules counts the release() calls.
 """
 
 import logging
@@ -24,6 +25,14 @@ class _FakeQRDecode:
 
     def release(self):
         self.releases += 1
+
+
+class _FakeTimer:
+    def __init__(self):
+        self.deletes = 0
+
+    def delete(self):
+        self.deletes += 1
 
 
 class _ListHandler(logging.Handler):
@@ -69,6 +78,17 @@ class TestGraphicalCameraQRDecodeRelease(unittest.TestCase):
     def test_pause_releases_decoder(self):
         self.activity.onPause(self.activity.main_screen)
         self.assertEqual(self.fake.releases, 1)
+        # tearDown's back_screen() pauses the activity again: the timer must not be deleted twice
+        self.assertIsNone(self.activity.capture_timer)
+
+    def test_stop_cam_twice_deletes_capture_timer_once(self):
+        self.activity.stop_cam()  # stops the real camera, if onCreate started one
+        timer = _FakeTimer()
+        self.activity.capture_timer = timer
+        self.activity.stop_cam()
+        self.activity.stop_cam()
+        self.assertEqual(timer.deletes, 1)
+        self.assertIsNone(self.activity.capture_timer)
 
     def test_pause_survives_release_failure(self):
         stopped = []

@@ -221,6 +221,7 @@ class CameraActivity(Activity):
     def stop_cam(self):
         if self.capture_timer:
             self.capture_timer.delete()
+            self.capture_timer = None
         if self.cam:
             CameraManager.get_cameras()[0].deinit(self.cam)
         self.cam = None
