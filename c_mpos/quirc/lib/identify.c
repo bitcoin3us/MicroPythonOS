@@ -107,14 +107,16 @@ static void perspective_setup(quirc_float_t *c,
  * every operation rounded to quirc_float_t (FLT_EVAL_METHOD == 0, unlike the
  * x87's excess precision) and (x + shift) - shift kept as written (no
  * -ffast-math, -fassociative-math or -funsafe-math-optimizations), so rint()
- * is also used when either can't be ruled out.
+ * is also used when either can't be ruled out. GCC reports those flags through
+ * __FAST_MATH__ and __ASSOCIATIVE_MATH__; clang has no macro for most of them
+ * (only -ffast-math defines __FAST_MATH__), so clang builds always use rint().
  * Defining QUIRC_USE_RINT to 0 or 1 overrides the choice.
  */
 #ifndef QUIRC_USE_RINT
 #if defined(__aarch64__) || defined(__SSE4_1__) || defined(__wasm__) || \
 	defined(__riscv_zfa) || !defined(FLT_EVAL_METHOD) || \
 	FLT_EVAL_METHOD != 0 || defined(__FAST_MATH__) || \
-	defined(__ASSOCIATIVE_MATH__)
+	defined(__ASSOCIATIVE_MATH__) || defined(__clang__)
 #define QUIRC_USE_RINT 1
 #else
 #define QUIRC_USE_RINT 0
